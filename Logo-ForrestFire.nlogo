@@ -1,10 +1,8 @@
 globals [
   initial-trees   ;; how many trees (green patches) we started with
-  burned-trees    ;; how many have burned so far
+  burned-trees    ;; how many have burned so farNW
+  height-matrix   ;; height matrix saved as list: NW,N,NE,W,C,E,SW,S,SE where C is always 1
 ]
-
-breed [fires fire]    ;; bright red turtles -- the leading edge of the fire
-breed [embers ember]  ;; turtles gradually fading from red to near black
 
 ;; burn coefficient of individual patch
 ;; 0: unburned
@@ -24,6 +22,9 @@ to setup
   clear-all
   set-default-shape turtles "square"
 
+  ;; init height matrix
+  set height-matrix (list height-NW height-N height-NE height-W 1 height-E height-SW height-S height-SE)
+
   ;; create forest ground (=dirt)
   ;; set burn coeficient to 0 for all patches
   ;; and color to brown (=dirt)
@@ -41,12 +42,12 @@ to setup
   ask patches with [(random-float 100) < density]
     [
       set pcolor green
-      set fire_spread 1
+      set fire_spread global-fire-spread
   ]
 
 
   ;; make a column of burning trees
-  ask patches with [pxcor = min-pxcor]
+  ask patches with [pxcor = 0 and pycor = 0]
     [ burn-out ]
 
 
@@ -57,10 +58,9 @@ to setup
 end
 
 to go
-  if not any? patches with [burn_coef = 0 and fire_spread > 0]
+  if not any? patches with [burn_coef < 1 and fire_spread > 0]
     [ stop ]
   ;; NEW
-
   ;; select unburned or partially burned cells
   ask patches with [(burn_coef >= 0) and (burn_coef < 1) and (fire_spread > 0)]
     [
@@ -69,80 +69,70 @@ to go
       let diag-burn 0
       let curr-burn burn_coef
 
+      ;; iterate over 8 neighbours and calculate burn
+      ;; of adjacent and diagonal neighbors
+      ;; height matrix is also applied
+      ;let dcorx -1
+      ;let dcory 1
+      ;foreach height-matrix [height ->
+      ;  []
+      ;]
+
       ;; burn area of adjacent cells
-      ask neighbors4 [
-        set adj-burn adj-burn + burn_coef
-      ]
+      if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj-burn adj-burn + (height-N) * burn_coef * fire_spread]]
+      if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj-burn adj-burn + (height-N) * burn_coef * fire_spread]]
+      if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj-burn adj-burn + (height-N) * burn_coef * fire_spread]]
+      if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj-burn adj-burn + (height-N) * burn_coef * fire_spread]]
 
       ;; burn area of diagonal cells
-      ask patches at-points [[1 1] [1 -1] [-1 1] [-1 -1]]
-        [set diag-burn diag-burn + burn_coef]
+      if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag-burn diag-burn + (height-NW) * burn_coef * fire_spread]]
+      if patch-at 1 1 != nobody [ask patch-at 1 1 [set diag-burn diag-burn + (height-NE) * burn_coef * fire_spread]]
+      if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag-burn diag-burn + (height-SW) * burn_coef * fire_spread]]
+      if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag-burn diag-burn + (height-SE) * burn_coef * fire_spread]]
 
       ;; burn of current cell
-      let burned-area diag-burn + adj-burn
+      let burned-area (adj-burn + (0.83 * diag-burn))
       let new-burn (burned-area / 8)
       set burn_coef burn_coef + new-burn
 
-      ;; adjust burn if neccessary
+      if (burn_coef < 0) [
+        set burn_coef 0
+      ]
+
+      ;; new tree has caught fire
+      if (burn_coef > 0 and curr-burn = 0) [
+        ignite-new
+      ]
+
+      ;; update fire color
+      if (burn_coef > 0.25 and burn_coef < 1) [
+        set pcolor red
+      ]
+
+      ;; burned out tree
       if (burn_coef > 1) [
         burn-out
       ]
 
-      ;; new tree has caught fire
-      if (new-burn > 0 and curr-burn = 0) [
-        ignite-new
-      ]
-
-      ;; burned out
-      if (new-burn = 1) [
-        set pcolor black
-      ]
-
   ]
 
-  ;; diagonal neighbors
-
-  ;; OLD
-  ;; ask fires
-  ;; this is the decision point
-  ;;  [ ask neighbors4 with [pcolor = green]
-  ;;      [ ignite-new ]
-  ;;    set breed embers ]
-  ;; fade-embers
   tick
-end
-
-;; OLD
-;; creates the fire turtles
-to ignite  ;; patch procedure
-  sprout-fires 1
-    [ set color red ]
-  set pcolor black
-  set burned-trees burned-trees + 1
 end
 
 ;; ignites given patch
 ;; sets its color to red
 to ignite-new
-  set pcolor red
-  set burned-trees burned-trees + 1
+  set pcolor green + 3
+  ;;set burned-trees burned-trees + 1
 end
 
 ;; burns the cell out
 ;; sets its' color to black
 ;; and burn coef to 1
 to burn-out
+  set burned-trees burned-trees + 1
   set pcolor black
   set burn_coef 1
-end
-
-;; achieve fading color effect for the fire as it burns
-to fade-embers
-  ask embers
-    [ set color color - 0.3  ;; make red darker
-      if color < red - 3.5     ;; are we almost at black?
-        [ set pcolor color
-          die ] ]
 end
 
 
@@ -150,9 +140,9 @@ end
 ; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
-200
+271
 10
-710
+781
 521
 -1
 -1
@@ -177,10 +167,10 @@ ticks
 30.0
 
 MONITOR
-43
-131
-158
-176
+41
+165
+156
+210
 percent burned
 (burned-trees / initial-trees)\n* 100
 1
@@ -189,24 +179,24 @@ percent burned
 
 SLIDER
 5
-38
+23
 190
-71
+56
 density
 density
 0.0
 99.0
-51.0
+84.0
 1.0
 1
 %
 HORIZONTAL
 
 BUTTON
+116
 118
-84
-187
-120
+185
+154
 go
 go
 T
@@ -220,10 +210,10 @@ NIL
 0
 
 BUTTON
-9
-85
-79
-121
+7
+119
+77
+155
 setup
 setup
 NIL
@@ -235,29 +225,12 @@ NIL
 NIL
 NIL
 1
-
-BUTTON
-67
-215
-130
-248
-Stop
-stop
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-0
 
 MONITOR
-61
-321
-136
-366
+4
+468
+79
+513
 Initial trees
 initial-trees
 17
@@ -265,15 +238,118 @@ initial-trees
 11
 
 MONITOR
-94
-403
-179
-448
+88
+469
+173
+514
 Burned trees
 burned-trees
 17
 1
 11
+
+SLIDER
+6
+69
+190
+102
+global-fire-spread
+global-fire-spread
+0
+1
+0.87
+0.01
+1
+NIL
+HORIZONTAL
+
+INPUTBOX
+9
+225
+68
+285
+height-NW
+0.1
+1
+0
+Number
+
+INPUTBOX
+77
+225
+131
+285
+height-N
+2.0
+1
+0
+Number
+
+INPUTBOX
+146
+226
+205
+286
+height-NE
+2.0
+1
+0
+Number
+
+INPUTBOX
+10
+298
+66
+358
+height-W
+2.0
+1
+0
+Number
+
+INPUTBOX
+148
+299
+203
+359
+height-E
+2.0
+1
+0
+Number
+
+INPUTBOX
+6
+367
+70
+427
+height-SW
+0.1
+1
+0
+Number
+
+INPUTBOX
+82
+370
+139
+430
+height-S
+2.0
+1
+0
+Number
+
+INPUTBOX
+146
+373
+207
+433
+height-SE
+2.0
+1
+0
+Number
 
 @#$#@#$#@
 ## WHAT IS IT?

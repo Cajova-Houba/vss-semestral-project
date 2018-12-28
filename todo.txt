@@ -1,0 +1,3 @@
+ - height
+	- correct height coefficient
+ - correct fire spred on one cell over time (divide by L or something)

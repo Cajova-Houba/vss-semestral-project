@@ -25,7 +25,13 @@ to setup
   ;; init height matrix
   set height-matrix (list height-NW height-N height-NE height-W 1 height-E height-SW height-S height-SE)
 
-  ;; create forest ground (=dirt)
+  ;; setup world
+  setup-image
+end
+
+;; Setup the wrold without image
+to setup-generate
+    ;; create forest ground (=dirt)
   ;; set burn coeficient to 0 for all patches
   ;; and color to brown (=dirt)
   ask patches
@@ -45,24 +51,114 @@ to setup
       set fire_spread global-fire-spread
   ]
 
+  ;; create random lake
+  ask patch random-pxcor random-pycor
+  [
+    set pcolor blue
+    set fire_spread 0
+    ask neighbors [
+      set pcolor blue
+      set fire_spread 0
+      ask neighbors [
+        set pcolor blue
+        set fire_spread 0
+      ]
+    ]
+  ]
+
 
   ;; make a column of burning trees
+  set burned-trees 0
   ask patches with [pxcor = 0 and pycor = 0]
     [ burn-out ]
 
 
   ;; set tree counts
   set initial-trees count patches with [pcolor = green]
-  set burned-trees 0
   reset-ticks
 end
 
+
+;; Load the world from image
+;; following colors are used
+;; paths, roads, buildings = white (255,255,255)
+;; grass lands = green (89,176,60)
+;; trees, woods = 63 (26,129,36)
+;; water = sky (45,151,190)
+;; dirt = brown
+to setup-image
+  ;; load image
+  import-pcolors "img/kamenicka-1-net-crop.bmp"
+
+  ;; common values for all patches
+  ask patches
+  [
+    set burn_coef 0
+    set fire_spread 0
+    set height 1
+  ]
+
+  ;; find paths
+  ;; fire cannot spread through paths
+  ask patches with [pcolor = white]
+  [
+    ;; currently 0 value is used for fire spread
+    ;; might change later
+    set fire_spread 0
+  ]
+
+  ;; find grass lands
+  ;; fire spreads with different speed on grass than in the woods
+  ask patches with [pcolor = green]
+  [
+    set fire_spread (global-fire-spread / 2.0)
+  ]
+
+  ;; find woods and add dirt accordingly to density
+  ask patches with [pcolor = 63]
+  [
+    ifelse ((random-float 100) < density)
+    [
+      ;; patch is a tree
+      set fire_spread global-fire-spread
+    ]
+    [
+      ;; patch is a dirt
+      set fire_spread 0
+      set pcolor brown
+    ]
+  ]
+
+  ;; find water
+  ;; fire cannot spread through water
+  ;; this piece of code is redundant but I'll keep it
+  ;; here in case I'm going to try to set water on fire later
+  ask patches with [pcolor = sky]
+  [
+    set fire_spread 0
+  ]
+
+
+  ;; start a fire
+  set burned-trees 0
+  ask patches with [pxcor = -50 and pycor = 0]
+    [ burn-out ]
+
+
+  ;; set tree counts
+  set initial-trees count patches with [pcolor = 63]
+  reset-ticks
+end
+
+
+;; Main procecure
 to go
   if not any? patches with [burn_coef < 1 and fire_spread > 0]
     [ stop ]
   ;; NEW
   ;; select unburned or partially burned cells
   ask patches with [(burn_coef >= 0) and (burn_coef < 1) and (fire_spread > 0)]
+  ;;ask patch 0 1
     [
       ;; see formula in the article at the end of section 3.1.
       let adj-burn 0
@@ -80,9 +176,9 @@ to go
 
       ;; burn area of adjacent cells
       if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj-burn adj-burn + (height-N) * burn_coef * fire_spread]]
-      if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj-burn adj-burn + (height-N) * burn_coef * fire_spread]]
-      if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj-burn adj-burn + (height-N) * burn_coef * fire_spread]]
-      if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj-burn adj-burn + (height-N) * burn_coef * fire_spread]]
+      if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj-burn adj-burn + (height-W) * burn_coef * fire_spread]]
+      if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj-burn adj-burn + (height-E) * burn_coef * fire_spread]]
+      if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj-burn adj-burn + (height-S) * burn_coef * fire_spread]]
 
       ;; burn area of diagonal cells
       if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag-burn diag-burn + (height-NW) * burn_coef * fire_spread]]
@@ -92,7 +188,12 @@ to go
 
       ;; burn of current cell
       let burned-area (adj-burn + (0.83 * diag-burn))
-      let new-burn (burned-area / 8)
+      ;if (burned-area > 0) [
+      ;  write "burned area: "
+      ;  write burned-area
+      ;  write "; "
+      ;]
+      let new-burn (burned-area / 8.0)
       set burn_coef burn_coef + new-burn
 
       if (burn_coef < 0) [
@@ -105,7 +206,7 @@ to go
       ]
 
       ;; update fire color
-      if (burn_coef > 0.25 and burn_coef < 1) [
+      if (burn_coef > 0.2 and burn_coef < 1) [
         set pcolor red
       ]
 
@@ -113,7 +214,6 @@ to go
       if (burn_coef > 1) [
         burn-out
       ]
-
   ]
 
   tick
@@ -122,7 +222,7 @@ end
 ;; ignites given patch
 ;; sets its color to red
 to ignite-new
-  set pcolor green + 3
+  set pcolor red + 3
   ;;set burned-trees burned-trees + 1
 end
 
@@ -186,7 +286,7 @@ density
 density
 0.0
 99.0
-84.0
+85.0
 1.0
 1
 %
@@ -269,7 +369,7 @@ INPUTBOX
 68
 285
 height-NW
-0.1
+1.0
 1
 0
 Number
@@ -280,7 +380,7 @@ INPUTBOX
 131
 285
 height-N
-2.0
+1.0
 1
 0
 Number
@@ -291,7 +391,7 @@ INPUTBOX
 205
 286
 height-NE
-2.0
+1.0
 1
 0
 Number
@@ -302,7 +402,7 @@ INPUTBOX
 66
 358
 height-W
-2.0
+1.0
 1
 0
 Number
@@ -313,7 +413,7 @@ INPUTBOX
 203
 359
 height-E
-2.0
+1.0
 1
 0
 Number
@@ -324,7 +424,7 @@ INPUTBOX
 70
 427
 height-SW
-0.1
+1.0
 1
 0
 Number
@@ -335,7 +435,7 @@ INPUTBOX
 139
 430
 height-S
-2.0
+1.0
 1
 0
 Number
@@ -346,7 +446,7 @@ INPUTBOX
 207
 433
 height-SE
-2.0
+1.0
 1
 0
 Number

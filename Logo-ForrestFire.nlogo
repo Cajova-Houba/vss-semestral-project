@@ -1,7 +1,8 @@
 globals [
-  initial-trees   ;; how many trees (green patches) we started with
-  burned-trees    ;; how many have burned so farNW
-  height-matrix   ;; height matrix saved as list: NW,N,NE,W,C,E,SW,S,SE where C is always 1
+  initial_trees   ;; how many trees (green patches) we started with
+  burned_trees    ;; how many have burned so farNW
+  height_mastrix   ;; height matrix saved as list: NW,N,NE,W,C,E,SW,S,SE where C is always 1
+  ;;fire_start      ;; whether fire should start on a point or as a wall
 ]
 
 ;; burn coefficient of individual patch
@@ -23,7 +24,7 @@ to setup
   set-default-shape turtles "square"
 
   ;; init height matrix
-  set height-matrix (list height-NW height-N height-NE height-W 1 height-E height-SW height-S height-SE)
+  set height_mastrix (list height-NW height-N height-NE height-W height-C height-E height-SW height-S height-SE)
 
   ;; setup world
   setup-image
@@ -68,13 +69,11 @@ to setup-generate
 
 
   ;; make a column of burning trees
-  set burned-trees 0
-  ask patches with [pxcor = 0 and pycor = 0]
-    [ burn-out ]
+  start-fire
 
 
   ;; set tree counts
-  set initial-trees count patches with [pcolor = green]
+  set initial_trees count patches with [pcolor = green]
   reset-ticks
 end
 
@@ -140,14 +139,19 @@ to setup-image
 
 
   ;; start a fire
-  set burned-trees 0
-  ask patches with [pxcor = -50 and pycor = 0]
-    [ burn-out ]
+  start-fire
 
 
   ;; set tree counts
-  set initial-trees count patches with [pcolor = 63]
+  set initial_trees count patches with [pcolor = 63]
   reset-ticks
+end
+
+;; starts fire on coordinates given by global variables
+to start-fire
+  set burned_trees 0
+  ask patches with [pxcor = fire_start_x and pycor = fire_start_y]
+    [ burn-out ]
 end
 
 
@@ -161,33 +165,36 @@ to go
   ;;ask patch 0 1
     [
       ;; see formula in the article at the end of section 3.1.
-      let adj-burn 0
-      let diag-burn 0
-      let curr-burn burn_coef
+      let adj_burn 0
+      let diag_burn 0
+      let curr_burn burn_coef
 
       ;; iterate over 8 neighbours and calculate burn
       ;; of adjacent and diagonal neighbors
       ;; height matrix is also applied
       ;let dcorx -1
       ;let dcory 1
-      ;foreach height-matrix [height ->
+      ;foreach height_mastrix [height ->
       ;  []
       ;]
 
       ;; burn area of adjacent cells
-      if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj-burn adj-burn + (height-N) * burn_coef * fire_spread]]
-      if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj-burn adj-burn + (height-W) * burn_coef * fire_spread]]
-      if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj-burn adj-burn + (height-E) * burn_coef * fire_spread]]
-      if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj-burn adj-burn + (height-S) * burn_coef * fire_spread]]
+      ;; heights can be in range from 0 to 2 so that max(min) height difference is 2 (-2)
+      ;; exp(dh) will then map this height difference to range from 0,3679 (downhill) to 2,7183 (uphill)
+      ;; for evety ask patch-at, height matrix needs to be centerd on the asked patch (so that it's applied correctly)
+      if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj_burn adj_burn + exp((height-S - height-C) / 2.0) * burn_coef * fire_spread]]
+      if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj_burn adj_burn + exp((height-E - height-C) / 2.0) * burn_coef * fire_spread]]
+      if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj_burn adj_burn + exp((height-W - height-C) / 2.0) * burn_coef * fire_spread]]
+      if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj_burn adj_burn + exp((height-N - height-C) / 2.0) * burn_coef * fire_spread]]
 
       ;; burn area of diagonal cells
-      if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag-burn diag-burn + (height-NW) * burn_coef * fire_spread]]
-      if patch-at 1 1 != nobody [ask patch-at 1 1 [set diag-burn diag-burn + (height-NE) * burn_coef * fire_spread]]
-      if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag-burn diag-burn + (height-SW) * burn_coef * fire_spread]]
-      if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag-burn diag-burn + (height-SE) * burn_coef * fire_spread]]
+      if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag_burn diag_burn + exp((height-SE - height-C) / 2.0) * burn_coef * fire_spread]]
+      if patch-at 1 1 != nobody [ask patch-at 1 1 [set diag_burn diag_burn + exp((height-SW - height-C) / 2.0) * burn_coef * fire_spread]]
+      if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag_burn diag_burn + exp((height-NE - height-C) / 2.0) * burn_coef * fire_spread]]
+      if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + exp((height-NW - height-C) / 2.0) * burn_coef * fire_spread]]
 
       ;; burn of current cell
-      let burned-area (adj-burn + (0.83 * diag-burn))
+      let burned-area (adj_burn + (0.83 * diag_burn))
       ;if (burned-area > 0) [
       ;  write "burned area: "
       ;  write burned-area
@@ -201,13 +208,17 @@ to go
       ]
 
       ;; new tree has caught fire
-      if (burn_coef > 0 and curr-burn = 0) [
+      if (burn_coef > 0 and curr_burn = 0) [
         ignite-new
       ]
 
       ;; update fire color
-      if (burn_coef > 0.2 and burn_coef < 1) [
-        set pcolor red
+      if (burn_coef > 0.2 and burn_coef < 0.6) [
+        set pcolor red + 3
+      ]
+
+      if (burn_coef >= 0.6 and burn_coef < 1) [
+         set pcolor red
       ]
 
       ;; burned out tree
@@ -222,15 +233,15 @@ end
 ;; ignites given patch
 ;; sets its color to red
 to ignite-new
-  set pcolor red + 3
-  ;;set burned-trees burned-trees + 1
+  ;;set pcolor red + 3
+  ;;set burned_trees burned_trees + 1
 end
 
 ;; burns the cell out
 ;; sets its' color to black
 ;; and burn coef to 1
 to burn-out
-  set burned-trees burned-trees + 1
+  set burned_trees burned_trees + 1
   set pcolor black
   set burn_coef 1
 end
@@ -267,12 +278,12 @@ ticks
 30.0
 
 MONITOR
-41
-165
-156
-210
+991
+28
+1106
+73
 percent burned
-(burned-trees / initial-trees)\n* 100
+(burned_trees / initial_trees)\n* 100
 1
 1
 11
@@ -286,17 +297,17 @@ density
 density
 0.0
 99.0
-85.0
+96.0
 1.0
 1
 %
 HORIZONTAL
 
 BUTTON
-116
-118
-185
-154
+885
+108
+954
+144
 go
 go
 T
@@ -310,10 +321,10 @@ NIL
 0
 
 BUTTON
-7
-119
-77
-155
+795
+108
+865
+144
 setup
 setup
 NIL
@@ -327,23 +338,23 @@ NIL
 1
 
 MONITOR
-4
-468
-79
-513
+793
+27
+868
+72
 Initial trees
-initial-trees
+initial_trees
 17
 1
 11
 
 MONITOR
-88
-469
-173
-514
+886
+27
+971
+72
 Burned trees
-burned-trees
+burned_trees
 17
 1
 11
@@ -357,96 +368,129 @@ global-fire-spread
 global-fire-spread
 0
 1
-0.87
+0.89
 0.01
 1
 NIL
 HORIZONTAL
 
 INPUTBOX
-9
-225
-68
-285
+10
+142
+69
+202
 height-NW
-1.0
+0.0
 1
 0
 Number
 
 INPUTBOX
-77
-225
-131
-285
+78
+142
+132
+202
 height-N
-1.0
+0.0
 1
 0
 Number
 
 INPUTBOX
-146
-226
-205
-286
+147
+143
+206
+203
 height-NE
-1.0
+0.0
+1
+0
+Number
+
+INPUTBOX
+11
+215
+67
+275
+height-W
+0.0
+1
+0
+Number
+
+INPUTBOX
+149
+216
+204
+276
+height-E
+0.0
+1
+0
+Number
+
+INPUTBOX
+7
+284
+71
+344
+height-SW
+0.0
+1
+0
+Number
+
+INPUTBOX
+83
+287
+140
+347
+height-S
+0.0
+1
+0
+Number
+
+INPUTBOX
+147
+290
+208
+350
+height-SE
+0.0
+1
+0
+Number
+
+INPUTBOX
+80
+218
+133
+278
+height-C
+0.0
 1
 0
 Number
 
 INPUTBOX
 10
-298
-66
-358
-height-W
-1.0
+402
+77
+462
+fire_start_x
+-80.0
 1
 0
 Number
 
 INPUTBOX
-148
-299
-203
-359
-height-E
-1.0
-1
-0
-Number
-
-INPUTBOX
-6
-367
-70
-427
-height-SW
-1.0
-1
-0
-Number
-
-INPUTBOX
-82
-370
-139
-430
-height-S
-1.0
-1
-0
-Number
-
-INPUTBOX
-146
-373
-207
-433
-height-SE
-1.0
+91
+402
+157
+462
+fire_start_y
+-100.0
 1
 0
 Number

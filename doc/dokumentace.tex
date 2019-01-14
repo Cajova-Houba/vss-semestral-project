@@ -13,6 +13,198 @@
 	\newpage
 	
 	\section{Zadání}
+	Pomocí nástroje NetLogo naprogramujte simulaci lesního požáru. Základem pro semestrální práci bude existující příklad simulace v programu NetLogo, který rozšířím o další parametry (vítr, hořlavost terénu, typy terénu, jiný model šíření ohně, ...) tak, jak je popsáno v článku Simulation of forest fire fronts using cellular automata\cite{source_article}. Práce bude umět simulovat šíření ohnivé stěny i šíření ohně z předem vybraného bodu.Ideálně by práce měla umět načíst mapu ze souboru a na té provést simulaci.
+	
+	\section{Teorie}
+	
+	\subsection{Základy pravděpodobnosti}
+	\begin{table}[H]
+		\centering
+		\begin{tabular}{|c|c|c|c|}
+			\hline
+			Název & Značení & Spojité & Diskrétní \\
+			\hline
+			\hline
+			Střední hodnota & $E(X)$ & $\int{xf(x)}$ & $\sum s_ip_i$ \\
+			\hline
+			Rozptyl & $\sigma^2, D(X)$ & $\int{(x-E(X))^2p(x)}$& $\sum p_i(x_i - E(X))^2$ \\
+			\hline
+			Směrodatná odchylka & $\sigma, s_x$ & $\sqrt{D(X)}$ & \\
+			\hline
+			Variační koeficient & $v_x$ & $\frac{s_x}{\bar{x}}$ & \\
+			\hline
+		\end{tabular}
+		\caption{Tabulka základních vzorečků}
+	\end{table}
+
+	\begin{table}[H]
+		\centering
+		\begin{tabular}{|c|c|c|c|c|}
+			\hline
+			Název & Hustota ppsti & Distribuční fce & Střední & Rozptyl \\
+			& (PDF) & (CDF) & hodnota &  \\
+			\hline
+			\hline
+			Rovnoměrné & $\frac{1}{b-a}$ & $\frac{x-a}{b-a}$ & $\frac{a+b}{2}$ & $\frac{1}{12}(b-a)^2$ \\
+			\hline
+			Normální & $\frac{1}{\sigma\sqrt{2\pi}}e^{-\frac{(x-\mu)^2}{2\sigma^2}}$ & $\frac{1}{\sqrt{2\pi}}e^{-\frac{x^2}{2}}$ & $\mu$ & $\sigma^2$ \\
+			\hline
+			
+			Exponenciální & $\lambda e^{-\lambda x}$ & $1-e^{-\lambda x}$ & $\frac{1}{\lambda}$ & $\frac{1}{\lambda^2}$ \\
+			\hline
+			
+			Poissonovo & $\frac{\lambda^x}{x!}e^{-\lambda}$ & exp. schody & $\lambda$ & $\lambda$ \\
+			\hline
+			Trojúhelníkové & $0$ pro $x < a$ & $0$ pro $x \le a$  & $\frac{a +b +c}{3}$& $\frac{a^2+b^2+c^2-ab-ac-bc}{18}$ \\
+			
+			(a-c-b) & $\frac{2(x-a)}{(b-a)(c-a)}$ pro $x < c$ & $\frac{(x-a)^2}{(b-a)(c-a)}$ pro $x \le c$ & & \\
+			
+			 & $\frac{2}{(b-a)}$ pro $x = c$ & & & \\
+			 & $\frac{2(b-x)}{(b-a)(b-c)}$ pro $x \le b$ &  $1- \frac{(b-x)^2}{(b-a)(b-c)}$ pro $c < b$ & & \\
+			 & $0$ pro $x > b$ & $1$ pro $x \ge b$  & & \\
+			\hline
+		\end{tabular}
+		\caption{Tabulka se vzorečky pro základní rozdělení}
+	\end{table}
+	
+	\subsection{Generování náhodných čísel}
+	\begin{itemize}
+		\item Kvazirozměrné rozložení, generátor uniformního rozložení (celé číslo na n bitech)
+		
+		\item Metoda prostředních čtverců
+		
+		\item Lineární rovnice + modulo aritmetika ($y_{i+1}= (ay_i +c) \; mod \; m$)
+	\end{itemize}
+
+	\subsubsection{Generování dalších rozdělení}
+	
+	\paragraph{Transformační metoda}
+	Uniformní rozdělení transformujeme podle inverzní distribuční fce $F^{-1}(u)$. Vhodné pokud je $F^{-1}(u)$ snadno zjistitelná.
+
+
+	\paragraph{Vylučovací metoda}
+	Musí být známa hustota ppsti $f(x)$. Dvěma uniformními generátory dostanu čísla v prostoru: 
+	
+	\begin{itemize}
+		\item $G_1$ s uniformním rozdělením na <a,b>
+		
+		\item $G_2$ s uniformním rozdělením na <0,M>
+		
+		\item $G_1 => y_1 => x_i = (b-a)y_1 + a$
+		
+		\item $G_2 => y_2 => z_i = My_2$
+		
+		\item Pokud $z_i < f(x_i)$ pak $x_i$ je náhodné číslo s rozdělením f(x); jinak opakuj
+	\end{itemize}
+
+	\paragraph{Obecné diskrétní rozdělení}
+	Pokud znám schodovou distribuční fci, generuji 1 číslo s uniformním rozdělením podle tabulky (CDF) určím výslednou hodnotu.
+
+	\subsubsection{Generování normálního rozdělení}
+	Součet $n$ náhodných čísel s rovnoměrným rozdělením se asymptoticky blíží k normálnímu rozdělení. $s_n = \sum_{1}^{n}y_i$, hodí se volit $n = 12$ protože $E\{s_n\} = nE\{y_i\} = \frac{n}{2} = 6$ a $D\{s_n\} = nD\{y_i\} = \frac{n}{12} = 1$, je tedy snadné generovat gaussovo rozdělení se $\mu=6$ a $\sigma=1$. Pro zadané $\mu$ a $\sigma$: $\sigma\cdot(\sum_{i=1}^{12} y_i -6) +a$
+	
+	\paragraph{Box-Müllerova transformace}
+	Stačí dvě hodnoty $x_1$,$x_2$ s normovaným rovnoměrným rozdělením: 
+	\begin{itemize}
+		\item $z_1 = \sqrt{-2ln(-x_1)}cos(2\pi x_2)$
+		\item $z_2 = \sqrt{-2ln(-x_1)}sin(2\pi x_2)$
+	\end{itemize}
+    
+    Lze ještě aplikovat parametry normálního rozdělení: $z_1 \sigma \mu $.
+	
+	\subsubsection{Testování generátoru} 
+	Ověřit, zda má generátor zadané vlastnosti (střední hodnotu, rozptyl, délka periody ...).
+	
+	\paragraph{$\chi^2$ test} Testuji, že nějaká hypotéza neplatí (nebo, že ji nelze zamínout). 
+	
+	\begin{itemize}
+\item 	Hodnoty z $\{y_i\}_1^n$ rozdělím do $k$ intervalů. V každém intervalu spočtu četnost $\theta_i$, ppst $p_i$, že hodnota $y_i$ spadne do intervalu. 
+
+\item  $\chi^2=\sum_{i=1}^{k} \frac{(\theta_i - np_i)^2}{np_i}$
+\item Porovnání s tabulkovou hodnotou. $\chi^2 \le \chi_{tab}^2$ pak hypotézu nelze zamítnout. Jinak hypotézu zamítnu na hladině ppsi $\alpha$.
+	\end{itemize}
+	
+	\subsection{Markovské náhodné procesy}
+	Poissonovo (počet jevů v určitém čas. intervalu) vs. Exponenciální rozdělení (délka intervalu mezi dvěma událostmi).
+	
+	\begin{itemize}
+		\item Stř. doba setrvání ve stavu $i$: $T_i=\frac{1}{\lambda_i}$
+		\item Stř. frekvence přechodů po hraně z $i$ do $j$: $f_{i,j}=p_i\cdot\lambda_{i,j}$ (pouze bez abs stavů)
+		\item Stř. doba cyklu průchodů stavem $i$: $T_{ci} = \frac{1}{f_i}$ (pouze bes abs stavů)
+	\end{itemize}
+	
+	\subsection{Systémy hromadné obsluhy}
+	Vstupní proud: $a$,$\lambda$. Doby obsluh: $s$,$\mu$. Fronta: $w$. Celý systém: $q$. Doba: $T$,$t$ (velká písmena = stř hodnoty, malá konkrétní). Počet požadavků: $L$. Zátěž systému: $
+	\rho = 
+	\frac{T_{obsluha}}{T_{mezi \; prichody}} = \frac{T_s}{T_a}$
+	
+	\paragraph{Charakteristiky vstupního proudu}
+	Veličina $\tau$. Exponenciální proud lze popsat jedním parametrem $\lambda$, proto $E\{\tau\} = T_a = \frac{1}{\lambda}$ (viz vzorečky ppsti). Koeficient variace určuje, jak moc je proud náhodný, typicky v intervalu $<0;1>$, kde $0$ jsou pravidelné příchody.
+	
+	\paragraph{Fronta požadavků}
+	Aktuální počet požadavků ve frontě: $w$. Střední počet požadavků ve frontě $L_w$. Doba čekání jednoho požadavku $t_w$. Stř. doba čekání požadavku ve frontě $T_w$. 
+
+	\paragraph{Charakteristiky SHO} Mezi středními hodnotami platí následující vztahy.
+	Stř. počet prvků v systému: $L_q = L_w + L_s = L_w + m\frac{\lambda}{\mu}$.
+	Stř. doba průchodu systémem: $T_q = T_w + T_s = T_w + \frac{1}{\mu}$.
+	
+	Littleovy vzorce:
+	\begin{itemize}
+		\item $L_q = \lambda \cdot T_q$
+		\item $L_w = \lambda \cdot T_w$
+		\item $T_w = L_w \cdot T_a$
+	\end{itemize}
+	
+	
+	\subsubsection{Kendallova klasifikace}
+	Znám charakteristiku vstupního proudu $F_a(t)$ a kanálu obsluhy $F_s(t)$, chci určit vlastnosti systému. Systém fron popsán pěticí X/Y/m(/I/disc)
+	\begin{itemize}
+		\item \textbf{X}: prvd. rozdělení vstupního produ
+			\subitem GI = obecné náhodné rozdělení, stat nezáv.; G = obecné náhodné rozdělení; M = exponenciální rozdělení; D = determ. intervaly
+		\item \textbf{Y}: prvd. rozdělení dob obsluh
+		\item \textbf{m}: počet kanálů obsluhy
+		\item \textbf{I}: max. délka fornty (obvykle $\infty$).
+		\item \textbf{disc.}: frontová disciplína (obvykle FIFO).
+	\end{itemize}
+	 
+	\paragraph{M/M/1}
+	Nejjednodušší případ, charakterizováno parametry $\lambda$,$\mu$. $\rho = \frac{\lambda}{\mu}$, pro stac. režim $\lambda < \mu$. Pokud stacionární, lze modelovat jako mark. proces: $p_k=\rho^kp_0=\rho^k(1-\rho)$. $E\{k\} = L_q = \sum_{k=0}^{\infty} kp_k = (1-\rho)\frac{\rho}{(1-\rho)^2}$.
+	
+	\paragraph{M/M/m}
+	$m$ obslužných kanálů pro 1 frontu.
+	Koeficient vytížení: $\rho=\frac{1}{m}\frac{\lambda}{\mu}=\frac{1}{m}\frac{T_s}{T_a}=\frac{\lambda T_s}{m}$. Pro $m\in\{1,2\}$ přesný, jink pouze přibližný odhad: $L_q=\frac{m\rho}{1-\rho^m}$; $T_q=\frac{T_s}{1-\rho^m}$.
+	
+	Pokud konečná fronta, některé požadavky zahozeny, proto nelze použít vzorce pro nekonečnou délku fronty a proto platí, že $\lambda_{realne} < \lambda_{teoreticke}$. Vzorce pro konkrét í případ lze odvodit z mark. modelu.
+	
+	\paragraph{M/G/1}
+	Nemarkovský model. Potřebuji $\lambda$ pro vstupní proud a $F_s(t)$, nebo $f_s(t)$ pro popis doby obsluhy. $\rho = \lambda T_s$ kde $T_s$ je stř. doba rozdělení $F_s(t)$. Na zbytek potřebuji koef. variace ($C_s^2$). $C_s = \frac{\sigma(\tau)}{T_s}$.
+	
+	\begin{itemize}
+		\item $L_w = L_{w(M/M/1)}\frac{1+C_s^2}{2}=\frac{\rho^2}{1-\rho}\frac{1+C_s^2}{2}$
+		
+		\item $L_q = L_w + L_s (=L_w + \frac{\lambda}{\mu} = L_w + \rho)$
+		
+		\item $T_q = \frac{L_q}{\lambda}$
+		
+		\item $T_w = \frac{L_w}{\lambda}$;$T_w = T_q - T_s$
+	\end{itemize}
+	Markovské modely se používají jako odhad nejhoršího průběhu.
+	
+	
+	\subsubsection{Složené sítě}
+	
+	\subsection{Základy teorie spolehlivosti}
+	
+	\subsection{Diskrétní stochatické modely}
+	
+	\subsection{Benchmarky}
+	
 	\section{Závěr}
+	
+	\begin{thebibliography}{9}
+		
+		\bibitem{source_article}
+		ENCIAS, Hernández, Hoya WHITE, Martín del RAY a Rodríguez SANCHÉZ. Simulation of forest fire fronts using cellular automata. A\textit{dvances in Engineering Software: Advances in Numerical Methods for Environmental Engineering}. 2007, 2007(6), 372-378. ISSN 0965-9978. Dostupné také z: https://www.sciencedirect.com/science/article/pii/S0965997806001293
+	\end{thebibliography}
 	
 \end{document}

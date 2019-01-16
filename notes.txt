@@ -9,8 +9,10 @@ Poznámky k simulaci (vycházející z článku):
 	- V případě nehomogeních lesů je časový krok dán jako čas potřebný k vyhoření buňek s největším R
 	- vliv větru a terénu (matice 3x3), pokud nefouká: 1
 		- matice prvků w_i,j s 1 uprostřed
+		- konstantní v čase (ale nemusí nutně být)
 	- obdobně pro terén
 		- matice 3x3
+		- konstantní v čase (ale nemusí nutně být)
 		- prostřední prvek je 1 (H_i,j)
 		- okolní prvky jsou h_l,m = f(H_i,j - H_l,m) kde f(x) je většinou lineární fce
 	- celý model:
@@ -18,7 +20,23 @@ Poznámky k simulaci (vycházející z článku):
 		- sum_přilehlé = sum a_k,l(t)*h_k,l*w_k,l
 		- sum_diagonální = sum a_k,l(t)*h_k,l*w_k,l
 		- v případě, že a_i,j > 1, je bráno jako a_i,j = 1
-
+	
 - Karafyllidis-Thanailakis model
-	- 
+	- homogení lesy
+		- lambda je vyčísleno na 0.83 (předpokládá se šíření po diagonále)
+		- nový model předpokládá kruhové šíření, lambda je vyčísleno na 0.785
+	- nehomogení lesy:
+		- R_i,j je fire spread rate buňky i,j
+		- R je fire spread rate souseda s R_max
+		- platí, že R_i,j / R < 1
+		- přilehlý soused:
+			- t = R_i,j *L/R
+		- diagonální soused:
+			- t = pi * R_i,j^2 / (4R^2)
+		- těmito koeficienty je nutné pronásobit a_i,j(t), sum_přilehlé a sum_diagonální:
+	- diskretizace stavů:
+		- stav buňky i,j je:
+			- 0 pokud 0 <= a_i,j <= 1
+			- 1 pokud a_i,j >= 1
+	
 		

@@ -1,8 +1,7 @@
 globals [
   initial_trees   ;; how many trees (green patches) we started with
   burned_trees    ;; how many have burned so farNW
-  height_mastrix   ;; height matrix saved as list: NW,N,NE,W,C,E,SW,S,SE where C is always 1
-  ;;fire_start      ;; whether fire should start on a point or as a wall
+  height_matrix   ;; height matrix saved as list: NW,N,NE,W,C,E,SW,S,SE where C is always 1
 ]
 
 ;; burn coefficient of individual patch
@@ -24,15 +23,29 @@ to setup
   set-default-shape turtles "square"
 
   ;; init height matrix
-  set height_mastrix (list height-NW height-N height-NE height-W height-C height-E height-SW height-S height-SE)
-
-  ;; setup world
-  setup-image
+  ;; height matrix contains data adjust accordingly to model (h_i,j = f(H_center - H_i,j))
+  ;; height matrix is constant in time
+  ;; heights can be in range from 0 to 2 so that max(min) height difference is 2 (-2)
+  ;; exp(dh) will then map this height difference to range from 0,3679 (downhill) to 2,7183 (uphill)
+  set height_matrix (list
+    exp((height-NW - height-C) / 2.0)
+    exp((height-N - height-C) / 2.0)
+    exp((height-NE - height-C) / 2.0)
+    exp((height-W - height-C) / 2.0)
+    exp((height-C - height-C) / 2.0)
+    exp((height-E - height-C) / 2.0)
+    exp((height-SW - height-C) / 2.0)
+    exp((height-S - height-C) / 2.0)
+    exp((height-SE - height-C) / 2.0)
+  )
 end
 
 ;; Setup the wrold without image
 to setup-generate
-    ;; create forest ground (=dirt)
+  ;; global setup
+  setup
+
+  ;; create forest ground (=dirt)
   ;; set burn coeficient to 0 for all patches
   ;; and color to brown (=dirt)
   ask patches
@@ -86,6 +99,9 @@ end
 ;; water = sky (45,151,190)
 ;; dirt = brown
 to setup-image
+  ;; global setup
+  setup
+
   ;; load image
   import-pcolors "img/kamenicka-1-net-crop.bmp"
 
@@ -163,44 +179,32 @@ to go
   ;; select unburned or partially burned cells
   ask patches with [(burn_coef >= 0) and (burn_coef < 1) and (fire_spread > 0)]
   ;;ask patch 0 1
-    [
-      ;; see formula in the article at the end of section 3.1.
-      let adj_burn 0
-      let diag_burn 0
-      let curr_burn burn_coef
+  [
+    ;; see formula in the article at the end of section 3.1.
+    let adj_burn 0
+    let diag_burn 0
+    let curr_burn burn_coef
 
-      ;; iterate over 8 neighbours and calculate burn
-      ;; of adjacent and diagonal neighbors
-      ;; height matrix is also applied
-      ;let dcorx -1
-      ;let dcory 1
-      ;foreach height_mastrix [height ->
-      ;  []
-      ;]
+    ;; calculate burn area of adjacent cells
+    ;; for evety ask patch-at, height matrix needs to be centerd on the asked patch (so that it's applied correctly)
+    let max_fire_spread 0
+    ask max-one-of neighbors [fire_spread] [set max_fire_spread fire_spread]
+    let max_fire_spread_pow max_fire_spread * max_fire_spread
 
-      ;; burn area of adjacent cells
-      ;; heights can be in range from 0 to 2 so that max(min) height difference is 2 (-2)
-      ;; exp(dh) will then map this height difference to range from 0,3679 (downhill) to 2,7183 (uphill)
-      ;; for evety ask patch-at, height matrix needs to be centerd on the asked patch (so that it's applied correctly)
-      if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj_burn adj_burn + exp((height-S - height-C) / 2.0) * burn_coef * fire_spread]]
-      if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj_burn adj_burn + exp((height-E - height-C) / 2.0) * burn_coef * fire_spread]]
-      if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj_burn adj_burn + exp((height-W - height-C) / 2.0) * burn_coef * fire_spread]]
-      if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj_burn adj_burn + exp((height-N - height-C) / 2.0) * burn_coef * fire_spread]]
+    if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj_burn adj_burn + (item 5 height_matrix) * burn_coef * fire_spread]]                      ;; height_matrix[S]
+    if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj_burn adj_burn + (item 3 height_matrix) * burn_coef * fire_spread]]                   ;; height_matrix[E]
+    if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj_burn adj_burn + (item 7 height_matrix) * burn_coef * fire_spread]]                     ;; height_matrix[W]
+    if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj_burn adj_burn + (item 1 height_matrix) * burn_coef * fire_spread]]                    ;; height_matrix[N]
 
-      ;; burn area of diagonal cells
-      if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag_burn diag_burn + exp((height-SE - height-C) / 2.0) * burn_coef * fire_spread]]
-      if patch-at 1 1 != nobody [ask patch-at 1 1 [set diag_burn diag_burn + exp((height-SW - height-C) / 2.0) * burn_coef * fire_spread]]
-      if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag_burn diag_burn + exp((height-NE - height-C) / 2.0) * burn_coef * fire_spread]]
-      if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + exp((height-NW - height-C) / 2.0) * burn_coef * fire_spread]]
+    ;; burn area of diagonal cells
+    if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag_burn diag_burn + (item 4 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[SE]
+    if patch-at 1 1 != nobody [ask patch-at 1 1 [set diag_burn diag_burn + (item 6 height_matrix) * burn_coef * fire_spread * fire_spread]]      ;; height_matrix[SW]
+    if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag_burn diag_burn + (item 2 height_matrix) * burn_coef * fire_spread * fire_spread]]  ;; height_matrix[NE]
+    if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + (item 0 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[NW]
 
-      ;; burn of current cell
-      let burned-area (adj_burn + (0.83 * diag_burn))
-      ;if (burned-area > 0) [
-      ;  write "burned area: "
-      ;  write burned-area
-      ;  write "; "
-      ;]
-      let new-burn (burned-area / 8.0)
+    ;; burn of current cell
+    let burned-area ((adj_burn / max_fire_spread) + (0.785 * diag_burn / max_fire_spread_pow))
+    let new-burn (burned-area / 8.0)
       set burn_coef burn_coef + new-burn
 
       if (burn_coef < 0) [
@@ -304,10 +308,10 @@ density
 HORIZONTAL
 
 BUTTON
-885
-108
-954
-144
+931
+107
+1000
+143
 go
 go
 T
@@ -323,10 +327,10 @@ NIL
 BUTTON
 795
 108
-865
+907
 144
-setup
-setup
+Setup from file
+setup-image
 NIL
 1
 T
@@ -413,7 +417,7 @@ INPUTBOX
 67
 275
 height-W
-0.0
+1.0
 1
 0
 Number
@@ -424,7 +428,7 @@ INPUTBOX
 204
 276
 height-E
-0.0
+1.0
 1
 0
 Number
@@ -435,7 +439,7 @@ INPUTBOX
 71
 344
 height-SW
-0.0
+2.0
 1
 0
 Number
@@ -446,7 +450,7 @@ INPUTBOX
 140
 347
 height-S
-0.0
+2.0
 1
 0
 Number
@@ -457,7 +461,7 @@ INPUTBOX
 208
 350
 height-SE
-0.0
+2.0
 1
 0
 Number
@@ -468,7 +472,7 @@ INPUTBOX
 133
 278
 height-C
-0.0
+1.0
 1
 0
 Number
@@ -479,7 +483,7 @@ INPUTBOX
 77
 462
 fire_start_x
--80.0
+0.0
 1
 0
 Number
@@ -490,10 +494,27 @@ INPUTBOX
 157
 462
 fire_start_y
--100.0
+0.0
 1
 0
 Number
+
+BUTTON
+795
+151
+907
+187
+Setup random
+setup-generate
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?

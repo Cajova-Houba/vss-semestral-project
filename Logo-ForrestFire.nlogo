@@ -2,6 +2,7 @@ globals [
   initial_trees   ;; how many trees (green patches) we started with
   burned_trees    ;; how many have burned so farNW
   height_matrix   ;; height matrix saved as list: NW,N,NE,W,C,E,SW,S,SE where C is always 1
+  wind_matrix     ;; wind matrix saved as list: NW,N,NE,W,C,E,SW,SE where C is always 1
 ]
 
 ;; burn coefficient of individual patch
@@ -30,16 +31,40 @@ to setup
   ;; height matrix is constant in time
   ;; heights can be in range from 0 to 2 so that max(min) height difference is 2 (-2)
   ;; exp(dh) will then map this height difference to range from 0,3679 (downhill) to 2,7183 (uphill)
+  ;;set height_matrix (list
+  ;;  exp((height-NW - height-C) / 2.0)
+  ;;  exp((height-N - height-C) / 2.0)
+  ;;  exp((height-NE - height-C) / 2.0)
+  ;;  exp((height-W - height-C) / 2.0)
+  ;;  exp((height-C - height-C) / 2.0)
+  ;;  exp((height-E - height-C) / 2.0)
+  ;;  exp((height-SW - height-C) / 2.0)
+  ;;  exp((height-S - height-C) / 2.0)
+  ;;  exp((height-SE - height-C) / 2.0)
+  ;;)
+
   set height_matrix (list
-    exp((height-NW - height-C) / 2.0)
-    exp((height-N - height-C) / 2.0)
-    exp((height-NE - height-C) / 2.0)
-    exp((height-W - height-C) / 2.0)
-    exp((height-C - height-C) / 2.0)
-    exp((height-E - height-C) / 2.0)
-    exp((height-SW - height-C) / 2.0)
-    exp((height-S - height-C) / 2.0)
-    exp((height-SE - height-C) / 2.0)
+    height-NW
+    height-N
+    height-NE
+    height-W
+    height-C
+    height-E
+    height-SW
+    height-S
+    height-SE
+  )
+
+  set wind_matrix (list
+    wind-NW
+    wind-N
+    wind-NE
+    wind-W
+    wind-C
+    wind-E
+    wind-SW
+    wind-S
+    wind-SE
   )
 end
 
@@ -196,26 +221,43 @@ to go
     ;; for evety ask patch-at, height matrix needs to be centerd on the asked patch (so that it's applied correctly)
     let max_fire_spread 0
     ask max-one-of neighbors [fire_spread] [set max_fire_spread fire_spread]
+    if (max_fire_spread = 0) [
+      set max_fire_spread 1
+    ]
     let max_fire_spread_pow max_fire_spread * max_fire_spread
 
     ;; burn area adjacent cells
-    if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj_burn adj_burn + (item 5 height_matrix) * burn_coef * fire_spread]]                      ;; height_matrix[S]
-    if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj_burn adj_burn + (item 3 height_matrix) * burn_coef * fire_spread]]                   ;; height_matrix[E]
-    if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj_burn adj_burn + (item 7 height_matrix) * burn_coef * fire_spread]]                     ;; height_matrix[W]
-    if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj_burn adj_burn + (item 1 height_matrix) * burn_coef * fire_spread]]                    ;; height_matrix[N]
+    ;; height matrix      indexes
+    ;;    NW N  NE         0 1 2
+    ;;    W  C  E          3 4 5
+    ;;    SW S  SE         6 7 8
+    ;if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj_burn adj_burn + (item 7 wind_matrix) * (item 7 height_matrix) * burn_coef * fire_spread]]                      ;; height_matrix[S]
+    ;if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj_burn adj_burn + (item 5 wind_matrix) * (item 5 height_matrix) * burn_coef * fire_spread]]                   ;; height_matrix[E]
+    ;if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj_burn adj_burn + (item 3 wind_matrix) * (item 3 height_matrix) * burn_coef * fire_spread]]                     ;; height_matrix[W]
+    ;if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj_burn adj_burn + (item 1 wind_matrix) * (item 1 height_matrix) * burn_coef * fire_spread]]                    ;; height_matrix[N]
 
     ;; burn area of diagonal cells
-    if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag_burn diag_burn + (item 4 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[SE]
-    if patch-at 1 1 != nobody [ask patch-at 1 1 [set diag_burn diag_burn + (item 6 height_matrix) * burn_coef * fire_spread * fire_spread]]      ;; height_matrix[SW]
-    if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag_burn diag_burn + (item 2 height_matrix) * burn_coef * fire_spread * fire_spread]]  ;; height_matrix[NE]
-    if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + (item 0 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[NW]
+    ;if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag_burn diag_burn + (item 8 wind_matrix) * (item 8 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[SE]
+    ;if patch-at 1 1 != nobody [ask patch-at 1 1 [set diag_burn diag_burn + (item 6 wind_matrix) * (item 6 height_matrix) * burn_coef * fire_spread * fire_spread]]      ;; height_matrix[SW]
+    ;if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag_burn diag_burn + (item 2 wind_matrix) * (item 2 height_matrix) * burn_coef * fire_spread * fire_spread]]  ;; height_matrix[NE]
+    ;if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + (item 0 wind_matrix) * (item 0 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[NW]
+
+    if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj_burn adj_burn + (item 1 wind_matrix) * (item 1 height_matrix) * burn_coef * fire_spread]]                      ;; height_matrix[N]
+    if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj_burn adj_burn + (item 3 wind_matrix) * (item 3 height_matrix) * burn_coef * fire_spread]]                   ;; height_matrix[W]
+    if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj_burn adj_burn + (item 6 wind_matrix) * (item 5 height_matrix) * burn_coef * fire_spread]]                     ;; height_matrix[E]
+    if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj_burn adj_burn + (item 7 wind_matrix) * (item 7 height_matrix) * burn_coef * fire_spread]]                    ;; height_matrix[S]
+
+    ;; burn area of diagonal cells
+    if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag_burn diag_burn + (item 0 wind_matrix) * (item 0 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[NW]
+    if patch-at 1 1 != nobody [ask patch-at 1 1 [set diag_burn diag_burn + (item 2 wind_matrix) * (item 2 height_matrix) * burn_coef * fire_spread * fire_spread]]      ;; height_matrix[NE]
+    if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag_burn diag_burn + (item 6 wind_matrix) * (item 8 height_matrix) * burn_coef * fire_spread * fire_spread]]  ;; height_matrix[SW]
+    if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + (item 8 wind_matrix) * (item 6 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[SE]
 
     ;; total burned area
     let burned_area ((adj_burn / max_fire_spread) + (0.785 * diag_burn / max_fire_spread_pow))
 
     ;; burn_coef * R_ij/R + total burned area
-    let new_burn (burn_coef * fire_spread / max_fire_spread) + burned_area
-    set new_burn_coef new_burn
+    set new_burn_coef (burn_coef * fire_spread / max_fire_spread) + burned_area
 
     if (new_burn_coef < 0) [
       set new_burn_coef 0
@@ -401,7 +443,7 @@ INPUTBOX
 69
 202
 height-NW
-0.0
+1.5
 1
 0
 Number
@@ -412,7 +454,7 @@ INPUTBOX
 132
 202
 height-N
-0.0
+1.0
 1
 0
 Number
@@ -423,7 +465,7 @@ INPUTBOX
 206
 203
 height-NE
-0.0
+0.5
 1
 0
 Number
@@ -434,7 +476,7 @@ INPUTBOX
 67
 275
 height-W
-1.0
+1.5
 1
 0
 Number
@@ -445,7 +487,7 @@ INPUTBOX
 204
 276
 height-E
-1.0
+0.5
 1
 0
 Number
@@ -456,7 +498,7 @@ INPUTBOX
 71
 344
 height-SW
-2.0
+1.5
 1
 0
 Number
@@ -467,7 +509,7 @@ INPUTBOX
 140
 347
 height-S
-2.0
+1.0
 1
 0
 Number
@@ -478,7 +520,7 @@ INPUTBOX
 208
 350
 height-SE
-2.0
+0.5
 1
 0
 Number
@@ -495,23 +537,23 @@ height-C
 Number
 
 INPUTBOX
-10
-402
-77
-462
+452
+544
+519
+604
 fire_start_x
-0.0
+100.0
 1
 0
 Number
 
 INPUTBOX
-91
-402
-157
-462
+533
+544
+599
+604
 fire_start_y
-0.0
+70.0
 1
 0
 Number
@@ -532,6 +574,105 @@ NIL
 NIL
 NIL
 1
+
+INPUTBOX
+7
+376
+62
+436
+wind-NW
+0.5
+1
+0
+Number
+
+INPUTBOX
+75
+376
+125
+436
+wind-N
+0.5
+1
+0
+Number
+
+INPUTBOX
+140
+376
+194
+436
+wind-NE
+0.5
+1
+0
+Number
+
+INPUTBOX
+9
+443
+59
+503
+wind-W
+1.0
+1
+0
+Number
+
+INPUTBOX
+76
+443
+126
+503
+wind-C
+1.0
+1
+0
+Number
+
+INPUTBOX
+142
+445
+192
+505
+wind-E
+1.0
+1
+0
+Number
+
+INPUTBOX
+10
+514
+63
+574
+wind-SW
+1.5
+1
+0
+String
+
+INPUTBOX
+78
+517
+128
+577
+wind-S
+1.5
+1
+0
+String
+
+INPUTBOX
+144
+514
+194
+574
+wind-SE
+1.5
+1
+0
+Number
 
 @#$#@#$#@
 ## WHAT IS IT?

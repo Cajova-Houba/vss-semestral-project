@@ -1,0 +1,24 @@
+Poznámky k simulaci (vycházející z článku):
+ - 1 tick = 1 minuta reálného času
+ - 1 pixel v simulaci má rozměry 1m
+ 
+ - The basic model
+	- R je fire spread rate buňky, L je rozměr buňky
+	- pokud je buňka [i,j] nedotčená ohěm a má jednoho přilehlého souseda, který hoří, je čas potřebný ke shoření buňky t=L/R (sqrt(2) L/R v případě diagonálního souseda)
+	- jinak řečeno, a_i,j(t) = 0, a_i,j(t+1) = 1  (a_i,j(t+1) = lambda < 1 v případě diagonálního souseda)
+	- V případě nehomogeních lesů je časový krok dán jako čas potřebný k vyhoření buňek s největším R
+	- vliv větru a terénu (matice 3x3), pokud nefouká: 1
+		- matice prvků w_i,j s 1 uprostřed
+	- obdobně pro terén
+		- matice 3x3
+		- prostřední prvek je 1 (H_i,j)
+		- okolní prvky jsou h_l,m = f(H_i,j - H_l,m) kde f(x) je většinou lineární fce
+	- celý model:
+		- a_i,j(t+1) = a_i,j(t) + sum_přilehlé + lambda * sum_diagonální
+		- sum_přilehlé = sum a_k,l(t)*h_k,l*w_k,l
+		- sum_diagonální = sum a_k,l(t)*h_k,l*w_k,l
+		- v případě, že a_i,j > 1, je bráno jako a_i,j = 1
+
+- Karafyllidis-Thanailakis model
+	- 
+		

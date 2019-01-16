@@ -431,7 +431,7 @@ global-fire-spread
 global-fire-spread
 0
 1
-0.89
+0.12
 0.01
 1
 NIL
@@ -542,7 +542,7 @@ INPUTBOX
 519
 604
 fire_start_x
-100.0
+0.0
 1
 0
 Number
@@ -553,7 +553,7 @@ INPUTBOX
 599
 604
 fire_start_y
-70.0
+0.0
 1
 0
 Number
@@ -644,24 +644,24 @@ Number
 INPUTBOX
 10
 514
-63
+68
 574
 wind-SW
 1.5
 1
 0
-String
+Number
 
 INPUTBOX
-78
-517
-128
-577
+79
+515
+129
+575
 wind-S
 1.5
 1
 0
-String
+Number
 
 INPUTBOX
 144

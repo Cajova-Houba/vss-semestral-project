@@ -16,6 +16,8 @@
 	Pomocí nástroje NetLogo naprogramujte simulaci lesního požáru. Základem pro semestrální práci bude existující příklad simulace v programu NetLogo, který rozšířím o další parametry (vítr, hořlavost terénu, typy terénu, jiný model šíření ohně, ...) tak, jak je popsáno v článku Simulation of forest fire fronts using cellular automata\cite{source_article}. Práce bude umět simulovat šíření ohnivé stěny i šíření ohně z předem vybraného bodu.Ideálně by práce měla umět načíst mapu ze souboru a na té provést simulaci.
 	
 	\section{Teorie}
+	TODO:	Popis stávajícího modelu v NetLogo. Popis modelu v článku. Popis mého modelu.
+	
 	
 	\subsection{Základy pravděpodobnosti}
 	\begin{table}[H]
@@ -136,15 +138,15 @@
 	\subsection{Systémy hromadné obsluhy}
 	Vstupní proud: $a$,$\lambda$. Doby obsluh: $s$,$\mu$. Fronta: $w$. Celý systém: $q$. Doba: $T$,$t$ (velká písmena = stř hodnoty, malá konkrétní). Počet požadavků: $L$. Zátěž systému: $
 	\rho = 
-	\frac{T_{obsluha}}{T_{mezi \; prichody}} = \frac{T_s}{T_a}$
+	\frac{T_{obsluha}}{T_{mezi \; prichody}} = \frac{T_s}{T_a}$. Pokud $\rho < 1$, pak se jedná o stacionární režim (systém není přetížený).
 	
 	\paragraph{Charakteristiky vstupního proudu}
-	Veličina $\tau$. Exponenciální proud lze popsat jedním parametrem $\lambda$, proto $E\{\tau\} = T_a = \frac{1}{\lambda}$ (viz vzorečky ppsti). Koeficient variace určuje, jak moc je proud náhodný, typicky v intervalu $<0;1>$, kde $0$ jsou pravidelné příchody.
+	Veličina $\tau$. Exponenciální proud lze popsat jedním parametrem $\lambda$, proto $E\{\tau\} = T_a = \frac{1}{\lambda}$ (viz vzorečky ppsti). Koeficient variace určuje, jak moc je proud náhodný, typicky v intervalu $<0;1>$, kde $0$ jsou pravidelné příchody. Výstupní porud má stejnou periodu a frekvenci jako vstupní (pro stac. režim). Jinak $m\cdot\mu$ a rozdělení se blíží $F_s(t)$.
 	
 	\paragraph{Fronta požadavků}
 	Aktuální počet požadavků ve frontě: $w$. Střední počet požadavků ve frontě $L_w$. Doba čekání jednoho požadavku $t_w$. Stř. doba čekání požadavku ve frontě $T_w$. 
 
-	\paragraph{Charakteristiky SHO} Mezi středními hodnotami platí následující vztahy.
+	\paragraph{Charakteristiky SHO} $T_s = \frac{1}{\mu}$. Mezi středními hodnotami platí následující vztahy.
 	Stř. počet prvků v systému: $L_q = L_w + L_s = L_w + m\frac{\lambda}{\mu}$.
 	Stř. doba průchodu systémem: $T_q = T_w + T_s = T_w + \frac{1}{\mu}$.
 	
@@ -190,14 +192,82 @@
 	\end{itemize}
 	Markovské modely se používají jako odhad nejhoršího průběhu.
 	
+	\paragraph{GI/G/1} Stat. nezávislost dob příchodů ve vstupu. Potřebujeme znát $F_a(t)$, nebo $f_a(t)$. Zatížení $\rho = \frac{T_s}{T_a}$. Příbližně $L_w=\frac{\rho^2}{1-\rho}\frac{C_a^2+C_s^2}{2}$. Pro D/D/1 je $L_w=0$ pokud je $T_a > T_s$. Pro M/M/1 je $\frac{C_a^2+C_s^2}{2} = 0$.
+	
 	
 	\subsubsection{Složené sítě}
+	Jsou-li všechny vstupní toky poissonovské a obsluhy exponenciální, jsou i výstupní toky exponenciální. $\rightarrow$ dílčí SHO lze řešit jako M/M/m. Littleův zákon: $\L_q = \Lambda_0\cdot T_q$ (v podstatě: co do sítě vstoupí z ní musí i vystoupit). $\Lambda_0$ je souhrný vstupní tok do systému, $\Lambda_i$ vnitřní frekvence toku v uzlu. Pro uzly ve stacionárním systému platí obdoba Krichhoffových zákonů (z nich lze pak zjistit $\Lambda_i$). Zatížení uzlu: $\rho_i = \frac{1}{m_i}\Lambda_i T_{si}$. Pokud každé $\rho_i < 1$, pak je systém stacionární.
 	
-	\subsection{Základy teorie spolehlivosti}
+	Uzavřené sítě front lze řešit převedením na markovský model. V případě modelů interaktivního systému (n terminálů, 1 fronta, 1 server) se přechody do prava postupně zmenšují ($n\lambda$, $(n-1)\lambda$, ..., $\lambda$). Propustnost pak je $x=\frac{1}{T_s}(1-p_0)$ (ve stavu $p_0$ není co obsluhovat). $T_q=(n\frac{T_s}{1-p_0}) - T_t$ ($T_t = \frac{1}{\lambda}$ je doba 'přemýšlení' terminálu). 
 	
-	\subsection{Diskrétní stochatické modely}
+	\paragraph{Nepoissonovské sítě front} Toky obecně charakterizovány $\lambda$ a variačním koef. $C_\tau$. Pro stacionární platí $\lambda_{in} = \lambda_{out}$. Platí $C_{out}^2=1+\rho^2(C_s^2-1)+(1-\rho^2)(C_\tau^2-1)$. $\rho$ určuje vliv rozdělení dob vstupů a dob obsluh. Tok s $\lambda$,$C_\tau$ lze dělit na $n$ toků: $\lambda_i = \lambda p_i$, $C_i^2 = 1 + p_i(C_\tau^2-1)$. Slučovat toky lze podle: $\lambda = \sum_{i=1}^{n}\lambda_i$,$C^2 = 1+\sum_{i=1}^n(\frac{\lambda_i}{\lambda})^2(C_i^2 - 1)$. Pro jednotlivé elementární SHO lze použít vztahy pro GI/G/n.
 	
-	\subsection{Benchmarky}
+	\subsection{Základy teorie spolehlivosti} Systematické (bugy) vs. náhodné poruchy. Opravitelné vs. neopravitelné systémy. Zálohy: cold (vypnutá, aktivuje se po výpadku), teplá (zapnutá, neaktivní až do výpadku), horká (paralelně s hlavním výpočtem). MTTF = střední doba do poruchy (v modelech často $\lambda = \frac{1}{MTTF}$). MTBF = střední doba mezi poruchami. MTTR střední doba do opravy (v modelech často $\lambda = \frac{1}{MTTR}$).
+	
+	\paragraph{Ukazatele spolehlivosti} $Q(t)$ je distribuční fce ppsti poruchy. $R(t) = 1 Q(t)$ je distribuční fce ppsti bezporuch. provozu. Hustota ppsti: $f(t)$. Intenzita poruch: $\lambda(t) = \frac{f(t)}{R(t)}$. Výpočty vychází z empiricky zjištěné vanové křivky (čeká se na ustálení systému kdy je $\lambda$ cca konstantní), pak platí:
+	\begin{itemize}
+		\item $R(t) = e^{-\lambda t}$
+		\item $Q(t) = 1 - e^{-\lambda t}$ (distrib. fce exp. rozdělení)
+		\item $f(t) = \lambda e^{-\lambda t}$ (hustota ppsti exp. rozdělení)
+	\end{itemize}
+
+   Neobnovované objekty: $T_s = \frac{1}{\lambda}$. Obnovované objekty: $T_s = \frac{t_p}{n} = \frac{1}{n} \sum_{i=1}^{n} \tau_{pi}$ kde $\tau_{pi}$ jsou dby jednotlivých poruch. Obdobně střední doba cyklu (MTBF) je $T_c = \frac{1}{n} \sum_{i=1}^{n} (\tau_{pi} + \tau_{oi})$. Ppst, že objekt bude fungovat v libovolné době (koeficient pohotovosti): $K_p = \frac{t_p}{t_p + t_o}$. MTTR lze zavést jako $T_o = \frac{t_o}{n}$ (pro exp. $\frac{1}{\mu}$). $K_p = \frac{T_s}{T_s+T_q}=\frac{\mu}{\lambda + \mu}$. Součinitel prostoje: $K_n(t) = 1-K_p(t)$.
+	
+	\paragraph{Systémy s nezávislými prvky} Paralelní vs. sériové zapojení prvků. Pro sériové platí: $R(t) = \Pi_{i=1}^n R_i(t)$, $T_s = \frac{1}{\sum_{i=1}^{n}\lambda_i}$. Pro paralelní zapojení platí: $Q(t) = \Pi_{i=1}^n Q_i(t)$. V případě kombinovaných zapojení postupně redukuji. Pro exp. doby poruch platí: $T_s=\int_{0}^{\inf} R(t)dt = \frac{1}{\lambda_1+...} + \frac{1}{\lambda_1+...}$ (integruju $e^{-(\lambda_1+..)t}$ podle $t$). Mohu použít stavový graf, je $n$ prvků, musí fungovat alespoň $k$. Pro výsledné $R$ sečtu všechny stavy ($R_1 R_2 R_3$ pro stav $111$, $R_1Q_2R_3$ pro stav $101$, ...).
+	
+	\paragraph{Markovský model pro neob. systém} Podle problému vytvořím graf. Najdu všechny cesty z $1.$ do $n$ (absorpčního stavu), pro každou cestu určím $T_{ci}$ a $p_{ci}$. $T_s = \sum T_{ci} p_{ci}$. $T_ci$ určím jako součet $\frac{1}{\sum \lambda_{odchozi}}$ pro každou hranu v cestě. $p_ci$ určím jako součin $\frac{\lambda_{hrana}}{\sum \lambda_{odchozi}}$ pro každou hranu v cestě.
+	
+	\paragraph{Markovský model pro ob. systém} Klasika. $K_p = \sum_{ok \; stavy} p_i$, $T_s = \frac{\sum_{ok \; stavy}}{ppst \; prechodu \; do \; neok \; stavu}$.
+	
+	
+	\subsection{Diskrétní stochatické modely} Stochastická = založena na náhodných číslech. Diskrétní = stav jen v diskrétních okamžicích. Událostní = čas založený na událostech (ne na pravidelném korku). Stoch. simulace = výsledky se blíží realitě s větším počtem pokusů (Buffonova jehla).
+	
+	\paragraph{Metoda pseudoparalelních procesů} Založeno na objektové dekompozici simulačního modelu. Aktivní objekty = pracují podle vlastního programu; Pasivní objekty = poskytují služby ostatním. Základní objekty pro simulaci:  prvek seznamu (\textbf{LINK}) = objekt, který lze řadit do seznamů. Hlava seznamu (\textbf{HEAD}) = objekt reprezentující seznam. Proces (\textbf{PROCESS}) = aktivní prvek, může vykonávat činnost (generátory, kanály obsluhy).
+	
+	\textbf{LINK}:
+	\begin{itemize}
+		\item into(seznam) vloží objekt do zadaného seznamu
+		\item follow(prvek) zařadí objekt za daný prvek do seznamu
+		\item precede(prvek) zařadí objekt před daný prvek
+		\item out() vyjme prvek ze seznamu
+	\end{itemize}
+
+   \textbf{HEAD}:
+   \begin{itemize}
+		\item empty() je prázdný
+		\item cardinal() jak je velký
+		\item first() první prvek
+		\item last()
+		\item clear()
+   \end{itemize}
+
+	Prvky propojuji tak, že nový liunk přidám do fronty následujícího uzlu (přímá reference vs. všchny prvky v hash + identifikátor). Jednotný interface pro uzly akceptující požadavky (accept(link)), zpracování závisí na daném objektu. Kanál obsluhy zpožďuje cestu požadavku v síti (metoda hold(time)).
+	
+	\paragraph{Měření charakteristik sítě} Doba průchodu systémem $T_q$: pro každý prvek času vstupu do systému a čas výstupu ze systému $\rightarrow$ mohu počítat E(x), D(x) a histogram. 
+	
+	Statistika toku v místě: počítám rozdíl času v accept(). Mohu zjišťovat délky front $L_q$,$L_w$ (vzorkování). Zatížení serveru: $\rho = \frac{doba \; obsluh}{celkova \; doba}$.
+	
+	\paragraph{Mechanismus bariéry} Proces: střídání hold() a barrier.arrived(this). Bariéra: Postupně čeká až přijdou všechny procesy, pak všechny aktivuje.
+	
+	\paragraph{Bariéra + KS (randez-vous)} Proces: střídání hold() a barrier.arrived(this). Bariéra: Postupně čeká až přijdou všechny procesy, pak proběhne KS (hold()), pak se uvolní všechna vlákna.
+	
+	\paragraph{Monitor} KS se spouští pro každé vlákno ale smí v ní být jen jedno. Proces: hold($\lambda$); section.enter(); hold($\mu$); section.exit(). Monitor: nové procesy uspí, pokud je KS obsazená, při odchodu procesu probere první čekající.
+	
+	\paragraph{Producent, konzument} Producent: Dává (produkce = hold()) linky do bufferu, dokud může, pak se uspí. Pokud je něco v bufferu, vzbudí konzumenta. Konzument: pokud je buffer prázdný, uspí se. Jinak konzumuje. Pokud je buffer prázdný a producent spí, vzbudí jej. Konzumace = hold().
+	
+	\subsection{Benchmarky} Benchmark musí být opakovatelný a měřitelný. Dělení od nejsložitějších ale nejpřesnějších k nejsnáze naimplementovatelným: program, kvli kterému testujeme $\rightarrow$ reálné programy $\rightarrow$ jádra $\rightarrow$ syntetické benchmarky $\rightarrow$ specifické algoritmy.
+	
+	\paragraph{Hodnocené vlastnosti} Rychlost (odezva, MIPS), Spolehlivost, Dostupnost, Cena. Typické metriky: čas (něčeho), kapacita (celého/části systému), výkon (efektivita), spolehlivost (MTBF), dostupnost (MTTF, MTTR). Reálná vs. syntetická zátěž. Parametry = předem dané, faktor = parametry zátěže měnící se v čase.
+	
+	\paragraph{Návrh testu} S minimálním úsilím získat co nejvíc informací. Přesný popis zátěže a posloupnosti kroků. Přesná volba cílů (z toho vychází volba testů a interpretace výsledků). Systém = souhrn použitého SW,HW. Uživatel = netita využívající systém. Metrika = kritérium zvolené pro hodnocení, Zátěž = požadavky zasílané uživateli. Měření na reálném systému vs. analytický model vs. simulace. 
+	
+	\paragraph{Příklady benchmarků} Erastothenovo síto: hledání prvočísel, výkon zvisí na rychlosti paměti, implementaci polí, velikosti cache. Ackermanova funkce: test schopnosti překladače optimalizovat rekurzi. Whetstone (1972 - staré): sada instrukcí podle statistiky (50\% jump, 30\% aritmetika, ...) pro vědecké programy, měří počet float instrukcí za sekundu. Závisí na kvalitě překladače. Dhrystone (1984): realističtější než wheatstone (=použita jiná statistika pro instrukce), měří cykly/s nebo MIPS. CoreMark (2009): zpracování seznamů, matice, konečný automat, CRC, vlastní skóre.Linpack: řešení float soustavy lin. rovnic gauss. metodou, TFLOPS, porovnání superpočítačů. Debit/Credit: test databází, v každé transakci zápis do 4 tabulek, cena/1 transakci (TPC-C V5 modernější). SPEC Suite: sada různých reálný programů, testují různé komponenty/vlastnosti PC (pro Javu SPEC JVM2008). PCMark(domácí PC), 3DMark (grafické karty)
+	
+	
+	\paragraph{Základní chyby} Korelace není kauzalita. Aritmetický průměr vs. harmonický průměr (lepší pro převrácené hodnoty). Špatná tvorba grafu (měřítko, počátek os, popis os, špatný typ grafu). Porovnávání výsledků různých benchamrků. Povaha benchmarku neodpovídá povaze reálného použití stroje/SW. Nesystematický přístup (např. při volbě parametrů). Nevhodně zvolená zátěž systému. Benchmark je známý a výrobci pro něj optimalizují.
+	
+	\section{Použití}
+	Možnost nahrávat mapy z obrázků. Možnost nastavení hořlavosti druhů terénu, možnost nastavení matice výšky terénu.
 	
 	\section{Závěr}
 	

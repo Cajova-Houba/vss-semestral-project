@@ -9,7 +9,10 @@ globals [
 ;; > 0: partially burned
 ;; 1: burned
 patches-own [
+  ;; new_burn_coef will be moved to burn_coef
+  ;; after all patches are processed
   burn_coef
+  new_burn_coef
 
   ;; rate of fire spread of given cell
   fire_spread
@@ -51,6 +54,7 @@ to setup-generate
   ask patches
     [
       set burn_coef 0
+      set new_burn_coef 0
       set fire_spread 0
       set height 1
       set pcolor brown
@@ -109,6 +113,7 @@ to setup-image
   ask patches
   [
     set burn_coef 0
+    set new_burn_coef 0
     set fire_spread 0
     set height 1
   ]
@@ -167,7 +172,10 @@ end
 to start-fire
   set burned_trees 0
   ask patches with [pxcor = fire_start_x and pycor = fire_start_y]
-    [ burn-out ]
+    [
+      set burn_coef 1
+      burn-out
+  ]
 end
 
 
@@ -183,14 +191,14 @@ to go
     ;; see formula in the article at the end of section 3.1.
     let adj_burn 0
     let diag_burn 0
-    let curr_burn burn_coef
 
-    ;; calculate burn area of adjacent cells
+    ;; calculate burn area of neighbour cells
     ;; for evety ask patch-at, height matrix needs to be centerd on the asked patch (so that it's applied correctly)
     let max_fire_spread 0
     ask max-one-of neighbors [fire_spread] [set max_fire_spread fire_spread]
     let max_fire_spread_pow max_fire_spread * max_fire_spread
 
+    ;; burn area adjacent cells
     if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj_burn adj_burn + (item 5 height_matrix) * burn_coef * fire_spread]]                      ;; height_matrix[S]
     if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj_burn adj_burn + (item 3 height_matrix) * burn_coef * fire_spread]]                   ;; height_matrix[E]
     if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj_burn adj_burn + (item 7 height_matrix) * burn_coef * fire_spread]]                     ;; height_matrix[W]
@@ -202,36 +210,45 @@ to go
     if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag_burn diag_burn + (item 2 height_matrix) * burn_coef * fire_spread * fire_spread]]  ;; height_matrix[NE]
     if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + (item 0 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[NW]
 
-    ;; burn of current cell
-    let burned-area ((adj_burn / max_fire_spread) + (0.785 * diag_burn / max_fire_spread_pow))
-    let new-burn (burned-area / 8.0)
-      set burn_coef burn_coef + new-burn
+    ;; total burned area
+    let burned_area ((adj_burn / max_fire_spread) + (0.785 * diag_burn / max_fire_spread_pow))
 
-      if (burn_coef < 0) [
-        set burn_coef 0
-      ]
+    ;; burn_coef * R_ij/R + total burned area
+    let new_burn (burn_coef * fire_spread / max_fire_spread) + burned_area
+    set new_burn_coef new_burn
 
-      ;; new tree has caught fire
-      if (burn_coef > 0 and curr_burn = 0) [
-        ignite-new
-      ]
+    if (new_burn_coef < 0) [
+      set new_burn_coef 0
+    ]
 
-      ;; update fire color
-      if (burn_coef > 0.2 and burn_coef < 0.6) [
-        set pcolor red + 3
-      ]
+    ;; new tree has caught fire
+    if (new_burn_coef > 0 and burn_coef = 0) [
+      ignite-new
+    ]
 
-      if (burn_coef >= 0.6 and burn_coef < 1) [
-         set pcolor red
-      ]
+    ;; update fire color
+    if (new_burn_coef > 0.2 and new_burn_coef < 0.6) [
+      set pcolor red + 3
+    ]
 
-      ;; burned out tree
-      if (burn_coef > 1) [
-        burn-out
-      ]
+    if (new_burn_coef >= 0.6 and new_burn_coef < 1) [
+      set pcolor red
+    ]
+
+    ;; burned out tree
+    if (new_burn_coef > 1) [
+      burn-out
+    ]
+  ]
+
+  ;; all patches processed => move new_burn_coef to burn_coef
+  ask patches with [new_burn_coef > 0] [
+    set burn_coef new_burn_coef
+    set new_burn_coef 0
   ]
 
   tick
+  ;;stop
 end
 
 ;; ignites given patch
@@ -247,7 +264,7 @@ end
 to burn-out
   set burned_trees burned_trees + 1
   set pcolor black
-  set burn_coef 1
+  set new_burn_coef 1
 end
 
 

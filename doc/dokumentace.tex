@@ -3,6 +3,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage{graphicx}
 \usepackage{float}
+\usepackage{amsmath}
 
 \begin{document}
 	\title{KIV/VSS}
@@ -16,8 +17,64 @@
 	Pomocí nástroje NetLogo naprogramujte simulaci lesního požáru. Základem pro semestrální práci bude existující příklad simulace v programu NetLogo, který rozšířím o další parametry (vítr, hořlavost terénu, typy terénu, jiný model šíření ohně, ...) tak, jak je popsáno v článku Simulation of forest fire fronts using cellular automata\cite{source_article}. Práce bude umět simulovat šíření ohnivé stěny i šíření ohně z předem vybraného bodu.Ideálně by práce měla umět načíst mapu ze souboru a na té provést simulaci.
 	
 	\section{Teorie}
-	TODO:	Popis stávajícího modelu v NetLogo. Popis modelu v článku. Popis mého modelu.
+	Práce implementuje model šíření lesního požáru celulárním automatem tak, jak byl navržen v \cite{source_article}. Původní simulace šíření požáru, která je dostupná v knihovnách NetLogu, byla založená na šíření ohně 'želvičkami'. Model navržený v článku předpokládá pouze buněčný automat a je vhodný po použití simulace homogenního i nehomogenního lesa (což je reálnější případ).
 	
+	\subsection{Model šíření ohně}
+	Nejzákladnější model šíření ohně je založen na sčítání spálené plochy v osmi-okolí jedné buňky. Přírůstky od jednotlivých sousedů jsou násobeny koeficientem $\mu$, který v sobě zahrnuje parametry jako hořlavost, vítr, nebo výška terénu. V článku je popsána první modifikace základního modelu (podle \cite{old_model_art}), která rozlišuje přírůstek spálené plochy od přilehlých a diagonálních sousedů. Tato modifikace plyne z předpokladu šíření ohně po úhlopříčce v případě diagonálních sousedů, viz obrázek \ref{fig:diag-model-old}.
+	
+	\begin{figure} [H]
+		\centering
+		\caption{Starší model šíření ohně z diagonálních sousedů}
+		\label{fig:diag-model-old}
+	\end{figure}
+
+	Tvůrci článku tento model dále posouvají a počítají spálenou oblast diagonálních sousedů jako část kruhu (viz obrázek \ref{fig:diag-model-new}). Podle tvůrců článku tento přístup více odpovídá realitě.
+	
+	\begin{figure}[H]
+		\centering
+		\caption{Model šíření ohně z diagonálních sousedů navržený v článku}
+		\label{fig:diag-model-new}
+	\end{figure}
+	
+	\paragraph{Parametry ovlivňující šíření ohně} Koeficient $\mu$, uvedený dříve, v sobě zahrnuje několik parametrů, které šíření ohně ovlivňují. Prvním parametrem je rychlost šíření $R [\frac{m}{s}]$, který popisuje hořlavost buňky. Dalším parametrem je výška terénu, která je pro každou buňku popsána maticí $\Phi_{i,j}$ uvedenou v \ref{eq:height-matrix}.
+\begin{equation}
+	\Phi_{i,j} =
+	\begin{pmatrix}
+	h_{i-1,j-1}       & h_{i,j-1} & h_{i+1,j-1} \\
+	h_{i-1,j}       & 1 & h_{i+1,j} \\
+	h_{i-1,j+1}       & h_{i,j+1} & h_{i+1,j+1} \\
+	\end{pmatrix}
+	\label{eq:height-matrix}
+\end{equation}	
+	
+	Obdobně je řešen i vliv větru, který je popsán maticí $W_{i,j}$ uvedenou v \ref{eq:wind-matrix}.
+	
+	\begin{equation}
+	W_{i,j} =
+	\begin{pmatrix}
+	w_{i-1,j-1}       & w_{i,j-1} & w_{i+1,j-1} \\
+	w_{i-1,j}       & 1 & h_{i+1,j} \\
+	w_{i-1,j+1}       & w_{i,j+1} & w_{i+1,j+1} \\
+	\end{pmatrix}
+	\label{eq:wind-matrix}
+	\end{equation}	
+	
+	Rovnice \ref{eq:fire-spread-eq} popisuje model šíření ohně v buněčném automatu.
+	
+	\begin{equation}
+	a_{i,j}^{(t+1)} = \frac{R_{i,j}}{R}a_{i,j} + 
+	\sum_{\alpha,\beta \in V_{adj}} \mu_{\alpha,\beta} \frac{R_{i + \alpha, j+\beta}}{R} a_{i + \alpha, j + \beta} ^{(t)} + 
+	\sum_{\alpha,\beta \in V_{diag}} \mu_{\alpha,\beta} \frac{\pi R_{i + \alpha, j+\beta} ^2}{4R^2} a_{i + \alpha, j + \beta} ^{(t)}	
+	\label{eq:fire-spread-eq}
+	\end{equation}
+	
+	\begin{equation}
+		\mu_{\alpha,\beta} = w_{i+\alpha, j+\beta} h_{i+\alpha, j+\beta}
+		\label{eq:mu}
+	\end{equation}
+	
+	\subsection{Svět interpretovaný v NetLogu}
+	Popis světa (1 tik = 1 minuta, 1 buňka = 10x10 m, šíření ohně, ...)
 	
 	\subsection{Základy pravděpodobnosti}
 	\begin{table}[H]
@@ -269,12 +326,18 @@
 	\section{Použití}
 	Možnost nahrávat mapy z obrázků. Možnost nastavení hořlavosti druhů terénu, možnost nastavení matice výšky terénu.
 	
+	\section{Testování}
+	Testy v článku, obrázky z mého programu, srovnání
+	
 	\section{Závěr}
 	
 	\begin{thebibliography}{9}
 		
 		\bibitem{source_article}
-		ENCIAS, Hernández, Hoya WHITE, Martín del RAY a Rodríguez SANCHÉZ. Simulation of forest fire fronts using cellular automata. A\textit{dvances in Engineering Software: Advances in Numerical Methods for Environmental Engineering}. 2007, 2007(6), 372-378. ISSN 0965-9978. Dostupné také z: https://www.sciencedirect.com/science/article/pii/S0965997806001293
+		ENCIAS, Hernández a WHITE, Hoya a del RAY, Martín a SANCHÉZ, Rodríguez . Simulation of forest fire fronts using cellular automata. \textit{Advances in Engineering Software: Advances in Numerical Methods for Environmental Engineering}. 2007, 2007(6), 372-378. ISSN 0965-9978. Dostupné také z: https://www.sciencedirect.com/science/article/pii/S0965997806001293
+		
+		\bibitem{old_model_art}
+		KARAFYLLIDIS, Ioannis a THANAILAKIS, Adonios. A model for predicting forest fire spreading using cellular automata. \textit{Ecol Model} 1997, 99, 87–97.
 	\end{thebibliography}
 	
 \end{document}

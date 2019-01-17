@@ -3,6 +3,8 @@ globals [
   burned_trees    ;; how many have burned so farNW
   height_matrix   ;; height matrix saved as list: NW,N,NE,W,C,E,SW,S,SE where C is always 1
   wind_matrix     ;; wind matrix saved as list: NW,N,NE,W,C,E,SW,SE where C is always 1
+  R_max           ;; max fire spread in the whole world
+  R_max_pow       ;; R_max^2 is used in every iteration and since it's contant, it can be pre-calculated
 ]
 
 ;; burn coefficient of individual patch
@@ -91,7 +93,7 @@ to setup-generate
   ask patches with [(random-float 100) < density]
     [
       set pcolor green
-      set fire_spread global-fire-spread
+      set fire_spread (global-fire-spread / 10)
   ]
 
   ;; create random lake
@@ -109,13 +111,15 @@ to setup-generate
     ]
   ]
 
-
   ;; make a column of burning trees
   start-fire
 
-
   ;; set tree counts
   set initial_trees count patches with [pcolor = green]
+
+  ;; set R_max
+  set-r-max
+
   reset-ticks
 end
 
@@ -156,7 +160,7 @@ to setup-image
   ;; fire spreads with different speed on grass than in the woods
   ask patches with [pcolor = green]
   [
-    set fire_spread (global-fire-spread / 2.0)
+    set fire_spread (global-fire-spread / 20.0)
   ]
 
   ;; find woods and add dirt accordingly to density
@@ -165,7 +169,7 @@ to setup-image
     ifelse ((random-float 100) < density)
     [
       ;; patch is a tree
-      set fire_spread global-fire-spread
+      set fire_spread global-fire-spread / 10.0
     ]
     [
       ;; patch is a dirt
@@ -187,9 +191,12 @@ to setup-image
   ;; start a fire
   start-fire
 
-
   ;; set tree counts
   set initial_trees count patches with [pcolor = 63]
+
+  ;; set R_max
+  set-r-max
+
   reset-ticks
 end
 
@@ -198,6 +205,7 @@ to start-fire
   set burned_trees 0
   ask patches with [pxcor = fire_start_x and pycor = fire_start_y]
     [
+      set fire_spread global-fire-spread / 10.0
       set burn_coef 1
       burn-out
   ]
@@ -206,9 +214,9 @@ end
 
 ;; Main procecure
 to go
-  if not any? patches with [burn_coef < 1 and fire_spread > 0]
-    [ stop ]
-  ;; NEW
+  ;; variable used later for stop condition check
+  let curr_burn_trees burned_trees
+
   ;; select unburned or partially burned cells
   ask patches with [(burn_coef >= 0) and (burn_coef < 1) and (fire_spread > 0)]
   ;;ask patch 0 1
@@ -219,12 +227,6 @@ to go
 
     ;; calculate burn area of neighbour cells
     ;; for evety ask patch-at, height matrix needs to be centerd on the asked patch (so that it's applied correctly)
-    let max_fire_spread 0
-    ask max-one-of neighbors [fire_spread] [set max_fire_spread fire_spread]
-    if (max_fire_spread = 0) [
-      set max_fire_spread 1
-    ]
-    let max_fire_spread_pow max_fire_spread * max_fire_spread
 
     ;; burn area adjacent cells
     ;; height matrix      indexes
@@ -242,10 +244,10 @@ to go
     ;if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag_burn diag_burn + (item 2 wind_matrix) * (item 2 height_matrix) * burn_coef * fire_spread * fire_spread]]  ;; height_matrix[NE]
     ;if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + (item 0 wind_matrix) * (item 0 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[NW]
 
-    if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj_burn adj_burn + (item 1 wind_matrix) * (item 1 height_matrix) * burn_coef * fire_spread]]                      ;; height_matrix[N]
-    if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj_burn adj_burn + (item 3 wind_matrix) * (item 3 height_matrix) * burn_coef * fire_spread]]                   ;; height_matrix[W]
-    if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj_burn adj_burn + (item 6 wind_matrix) * (item 5 height_matrix) * burn_coef * fire_spread]]                     ;; height_matrix[E]
-    if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj_burn adj_burn + (item 7 wind_matrix) * (item 7 height_matrix) * burn_coef * fire_spread]]                    ;; height_matrix[S]
+    if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj_burn (adj_burn + (item 1 wind_matrix) * (item 1 height_matrix) * burn_coef * fire_spread)]]                      ;; height_matrix[N]
+    if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj_burn (adj_burn + (item 3 wind_matrix) * (item 3 height_matrix) * burn_coef * fire_spread)]]                   ;; height_matrix[W]
+    if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj_burn (adj_burn + (item 6 wind_matrix) * (item 5 height_matrix) * burn_coef * fire_spread)]]                     ;; height_matrix[E]
+    if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj_burn (adj_burn + (item 7 wind_matrix) * (item 7 height_matrix) * burn_coef * fire_spread)]]                    ;; height_matrix[S]
 
     ;; burn area of diagonal cells
     if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag_burn diag_burn + (item 0 wind_matrix) * (item 0 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[NW]
@@ -253,11 +255,36 @@ to go
     if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag_burn diag_burn + (item 6 wind_matrix) * (item 8 height_matrix) * burn_coef * fire_spread * fire_spread]]  ;; height_matrix[SW]
     if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + (item 8 wind_matrix) * (item 6 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[SE]
 
+    ;if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj_burn adj_burn + burn_coef * (fire_spread / 10)]]                      ;; height_matrix[N]
+    ;if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj_burn adj_burn + burn_coef * (fire_spread / 10)]]                   ;; height_matrix[W]
+    ;if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj_burn adj_burn + burn_coef * (fire_spread / 10) ]]                     ;; height_matrix[E]
+    ;if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj_burn adj_burn + burn_coef * (fire_spread / 10) ]]                    ;; height_matrix[S]
+
+    ;; burn area of diagonal cells
+    ;if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag_burn diag_burn + burn_coef * fire_spread * fire_spread]]    ;; height_matrix[NW]
+    ;if patch-at 1 1 != nobody [ask patch-at 1 1 [set diag_burn diag_burn + burn_coef * fire_spread * fire_spread]]      ;; height_matrix[NE]
+    ;if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag_burn diag_burn + burn_coef * fire_spread * fire_spread]]  ;; height_matrix[SW]
+    ;if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + burn_coef * fire_spread * fire_spread]]    ;; height_matrix[SE]
+
     ;; total burned area
-    let burned_area ((adj_burn / max_fire_spread) + (0.785 * diag_burn / max_fire_spread_pow))
+    let burned_area ((adj_burn / R_max) + (0.785 * diag_burn / R_max_pow))
 
     ;; burn_coef * R_ij/R + total burned area
-    set new_burn_coef (burn_coef * fire_spread / max_fire_spread) + burned_area
+    set new_burn_coef ((burn_coef * fire_spread / R_max) + burned_area)
+
+    ;if (pxcor = 1 and pycor = 0) [
+    ;  let tmp_bc 0
+    ;  ask patch-at -1 0 [set tmp_bc (tmp_bc + burn_coef)]
+    ;  show tmp_bc
+    ;  show fire_spread
+    ;  ask patch-at -1 0 [set tmp_bc (tmp_bc + burn_coef * fire_spread)]
+    ;  show tmp_bc
+    ;  show adj_burn
+    ;  show diag_burn
+    ;  show burned_area
+    ;  show burn_coef
+    ;  show new_burn_coef
+    ;]
 
     if (new_burn_coef < 0) [
       set new_burn_coef 0
@@ -278,7 +305,7 @@ to go
     ]
 
     ;; burned out tree
-    if (new_burn_coef > 1) [
+    if (new_burn_coef >= 1) [
       burn-out
     ]
   ]
@@ -289,8 +316,16 @@ to go
     set new_burn_coef 0
   ]
 
-  tick
-  ;;stop
+  ;; if no new trees were burned and no patches are burning (burn_coeficient > 0 but < 1), stop
+  let burning_patches_count count patches with [burn_coef > 0 and burn_coef < 1]
+  ifelse (curr_burn_trees = burned_trees and  burning_patches_count = 0) [
+    ;tick
+    show burning_patches_count
+    stop
+  ] [
+    tick
+    ;stop
+  ]
 end
 
 ;; ignites given patch
@@ -309,6 +344,14 @@ to burn-out
   set new_burn_coef 1
 end
 
+;; sets R_max and R_max_pow globals
+to set-r-max
+  ask max-one-of patches [fire_spread] [set R_max fire_spread]
+  if (R_max = 0) [
+    set R_max 1
+  ]
+  set R_max_pow R_max * R_max
+end
 
 ; Copyright 1997 Uri Wilensky.
 ; See Info tab for full copyright and license.
@@ -360,7 +403,7 @@ density
 density
 0.0
 99.0
-96.0
+63.0
 1.0
 1
 %
@@ -425,16 +468,16 @@ burned_trees
 SLIDER
 6
 69
-190
+194
 102
 global-fire-spread
 global-fire-spread
 0
 1
-0.12
+0.94
 0.01
 1
-NIL
+m/min
 HORIZONTAL
 
 INPUTBOX
@@ -443,7 +486,7 @@ INPUTBOX
 69
 202
 height-NW
-1.5
+1.0
 1
 0
 Number
@@ -465,7 +508,7 @@ INPUTBOX
 206
 203
 height-NE
-0.5
+1.0
 1
 0
 Number
@@ -476,7 +519,7 @@ INPUTBOX
 67
 275
 height-W
-1.5
+1.0
 1
 0
 Number
@@ -487,7 +530,7 @@ INPUTBOX
 204
 276
 height-E
-0.5
+1.0
 1
 0
 Number
@@ -498,7 +541,7 @@ INPUTBOX
 71
 344
 height-SW
-1.5
+1.0
 1
 0
 Number
@@ -520,7 +563,7 @@ INPUTBOX
 208
 350
 height-SE
-0.5
+1.0
 1
 0
 Number
@@ -542,7 +585,7 @@ INPUTBOX
 519
 604
 fire_start_x
-0.0
+-50.0
 1
 0
 Number
@@ -553,7 +596,7 @@ INPUTBOX
 599
 604
 fire_start_y
-0.0
+-80.0
 1
 0
 Number
@@ -581,7 +624,7 @@ INPUTBOX
 62
 436
 wind-NW
-0.5
+1.0
 1
 0
 Number
@@ -592,7 +635,7 @@ INPUTBOX
 125
 436
 wind-N
-0.5
+1.0
 1
 0
 Number
@@ -603,7 +646,7 @@ INPUTBOX
 194
 436
 wind-NE
-0.5
+1.0
 1
 0
 Number
@@ -647,7 +690,7 @@ INPUTBOX
 68
 574
 wind-SW
-1.5
+1.0
 1
 0
 Number
@@ -658,7 +701,7 @@ INPUTBOX
 129
 575
 wind-S
-1.5
+1.0
 1
 0
 Number
@@ -669,7 +712,7 @@ INPUTBOX
 194
 574
 wind-SE
-1.5
+1.0
 1
 0
 Number

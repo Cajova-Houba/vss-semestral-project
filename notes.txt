@@ -6,7 +6,7 @@ Poznámky k simulaci (vycházející z článku):
 	- R je fire spread rate buňky, L je rozměr buňky
 	- pokud je buňka [i,j] nedotčená ohěm a má jednoho přilehlého souseda, který hoří, je čas potřebný ke shoření buňky t=L/R (sqrt(2) L/R v případě diagonálního souseda)
 	- jinak řečeno, a_i,j(t) = 0, a_i,j(t+1) = 1  (a_i,j(t+1) = lambda < 1 v případě diagonálního souseda)
-	- V případě nehomogeních lesů je časový krok dán jako čas potřebný k vyhoření buňek s největším R
+	- V případě nehomogeních lesů je časový krok dán jako čas potřebný k vyhoření buňek s největším R (R_max v rámci celé zkoumané plochy)
 	- vliv větru a terénu (matice 3x3), pokud nefouká: 1
 		- matice prvků w_i,j s 1 uprostřed
 		- konstantní v čase (ale nemusí nutně být)

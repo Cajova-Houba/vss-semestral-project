@@ -233,58 +233,22 @@ to go
     ;;    NW N  NE         0 1 2
     ;;    W  C  E          3 4 5
     ;;    SW S  SE         6 7 8
-    ;if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj_burn adj_burn + (item 7 wind_matrix) * (item 7 height_matrix) * burn_coef * fire_spread]]                      ;; height_matrix[S]
-    ;if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj_burn adj_burn + (item 5 wind_matrix) * (item 5 height_matrix) * burn_coef * fire_spread]]                   ;; height_matrix[E]
-    ;if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj_burn adj_burn + (item 3 wind_matrix) * (item 3 height_matrix) * burn_coef * fire_spread]]                     ;; height_matrix[W]
-    ;if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj_burn adj_burn + (item 1 wind_matrix) * (item 1 height_matrix) * burn_coef * fire_spread]]                    ;; height_matrix[N]
+    if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj_burn (adj_burn + (item 7 wind_matrix) * (item 7 height_matrix) * burn_coef * fire_spread)]]                      ;; N -> height_matrix[N]
+    if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj_burn (adj_burn + (item 6 wind_matrix) * (item 6 height_matrix) * burn_coef * fire_spread)]]                   ;; W -> height_matrix[W]
+    if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj_burn (adj_burn + (item 3 wind_matrix) * (item 3 height_matrix) * burn_coef * fire_spread)]]                     ;; E -> height_matrix[E]
+    if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj_burn (adj_burn + (item 1 wind_matrix) * (item 1 height_matrix) * burn_coef * fire_spread)]]                    ;; S -> height_matrix[S]
 
     ;; burn area of diagonal cells
-    ;if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag_burn diag_burn + (item 8 wind_matrix) * (item 8 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[SE]
-    ;if patch-at 1 1 != nobody [ask patch-at 1 1 [set diag_burn diag_burn + (item 6 wind_matrix) * (item 6 height_matrix) * burn_coef * fire_spread * fire_spread]]      ;; height_matrix[SW]
-    ;if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag_burn diag_burn + (item 2 wind_matrix) * (item 2 height_matrix) * burn_coef * fire_spread * fire_spread]]  ;; height_matrix[NE]
-    ;if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + (item 0 wind_matrix) * (item 0 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[NW]
-
-    if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj_burn (adj_burn + (item 1 wind_matrix) * (item 1 height_matrix) * burn_coef * fire_spread)]]                      ;; height_matrix[N]
-    if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj_burn (adj_burn + (item 3 wind_matrix) * (item 3 height_matrix) * burn_coef * fire_spread)]]                   ;; height_matrix[W]
-    if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj_burn (adj_burn + (item 6 wind_matrix) * (item 5 height_matrix) * burn_coef * fire_spread)]]                     ;; height_matrix[E]
-    if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj_burn (adj_burn + (item 7 wind_matrix) * (item 7 height_matrix) * burn_coef * fire_spread)]]                    ;; height_matrix[S]
-
-    ;; burn area of diagonal cells
-    if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag_burn diag_burn + (item 0 wind_matrix) * (item 0 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[NW]
-    if patch-at 1 1 != nobody [ask patch-at 1 1 [set diag_burn diag_burn + (item 2 wind_matrix) * (item 2 height_matrix) * burn_coef * fire_spread * fire_spread]]      ;; height_matrix[NE]
-    if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag_burn diag_burn + (item 6 wind_matrix) * (item 8 height_matrix) * burn_coef * fire_spread * fire_spread]]  ;; height_matrix[SW]
-    if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + (item 8 wind_matrix) * (item 6 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[SE]
-
-    ;if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj_burn adj_burn + burn_coef * (fire_spread / 10)]]                      ;; height_matrix[N]
-    ;if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj_burn adj_burn + burn_coef * (fire_spread / 10)]]                   ;; height_matrix[W]
-    ;if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj_burn adj_burn + burn_coef * (fire_spread / 10) ]]                     ;; height_matrix[E]
-    ;if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj_burn adj_burn + burn_coef * (fire_spread / 10) ]]                    ;; height_matrix[S]
-
-    ;; burn area of diagonal cells
-    ;if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag_burn diag_burn + burn_coef * fire_spread * fire_spread]]    ;; height_matrix[NW]
-    ;if patch-at 1 1 != nobody [ask patch-at 1 1 [set diag_burn diag_burn + burn_coef * fire_spread * fire_spread]]      ;; height_matrix[NE]
-    ;if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag_burn diag_burn + burn_coef * fire_spread * fire_spread]]  ;; height_matrix[SW]
-    ;if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + burn_coef * fire_spread * fire_spread]]    ;; height_matrix[SE]
+    if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag_burn diag_burn + (item 8 wind_matrix) * (item 8 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[NW]
+    if patch-at 1 1 != nobody [ask patch-at 1 1 [set diag_burn diag_burn + (item 6 wind_matrix) * (item 6 height_matrix) * burn_coef * fire_spread * fire_spread]]      ;; height_matrix[NE]
+    if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag_burn diag_burn + (item 2 wind_matrix) * (item 2 height_matrix) * burn_coef * fire_spread * fire_spread]]  ;; height_matrix[SW]
+    if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + (item 0 wind_matrix) * (item 0 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[SE]
 
     ;; total burned area
     let burned_area ((adj_burn / R_max) + (0.785 * diag_burn / R_max_pow))
 
     ;; burn_coef * R_ij/R + total burned area
     set new_burn_coef ((burn_coef * fire_spread / R_max) + burned_area)
-
-    ;if (pxcor = 1 and pycor = 0) [
-    ;  let tmp_bc 0
-    ;  ask patch-at -1 0 [set tmp_bc (tmp_bc + burn_coef)]
-    ;  show tmp_bc
-    ;  show fire_spread
-    ;  ask patch-at -1 0 [set tmp_bc (tmp_bc + burn_coef * fire_spread)]
-    ;  show tmp_bc
-    ;  show adj_burn
-    ;  show diag_burn
-    ;  show burned_area
-    ;  show burn_coef
-    ;  show new_burn_coef
-    ;]
 
     if (new_burn_coef < 0) [
       set new_burn_coef 0
@@ -403,7 +367,7 @@ density
 density
 0.0
 99.0
-63.0
+80.0
 1.0
 1
 %
@@ -486,7 +450,7 @@ INPUTBOX
 69
 202
 height-NW
-1.0
+1.5
 1
 0
 Number
@@ -497,7 +461,7 @@ INPUTBOX
 132
 202
 height-N
-1.0
+1.5
 1
 0
 Number
@@ -508,7 +472,7 @@ INPUTBOX
 206
 203
 height-NE
-1.0
+1.5
 1
 0
 Number
@@ -541,7 +505,7 @@ INPUTBOX
 71
 344
 height-SW
-1.0
+0.5
 1
 0
 Number
@@ -552,7 +516,7 @@ INPUTBOX
 140
 347
 height-S
-1.0
+0.5
 1
 0
 Number
@@ -563,7 +527,7 @@ INPUTBOX
 208
 350
 height-SE
-1.0
+0.5
 1
 0
 Number
@@ -585,7 +549,7 @@ INPUTBOX
 519
 604
 fire_start_x
--50.0
+0.0
 1
 0
 Number
@@ -596,7 +560,7 @@ INPUTBOX
 599
 604
 fire_start_y
--80.0
+0.0
 1
 0
 Number

@@ -4,6 +4,8 @@
 \usepackage{graphicx}
 \usepackage{float}
 \usepackage{amsmath}
+\usepackage{subcaption}
+\graphicspath{{./img/}}
 
 \begin{document}
 	\title{KIV/VSS}
@@ -20,23 +22,35 @@
 	Práce implementuje model šíření lesního požáru celulárním automatem tak, jak byl navržen v \cite{source_article}. Původní simulace šíření požáru, která je dostupná v knihovnách NetLogu, byla založená na šíření ohně 'želvičkami'. Model navržený v článku předpokládá pouze buněčný automat a je vhodný po použití simulace homogenního i nehomogenního lesa (což je reálnější případ).
 	
 	\subsection{Model šíření ohně}
-	Nejzákladnější model šíření ohně je založen na sčítání spálené plochy v osmi-okolí jedné buňky. Přírůstky od jednotlivých sousedů jsou násobeny koeficientem $\mu$, který v sobě zahrnuje parametry jako hořlavost, vítr, nebo výška terénu. V článku je popsána první modifikace základního modelu (podle \cite{old_model_art}), která rozlišuje přírůstek spálené plochy od přilehlých a diagonálních sousedů. Tato modifikace plyne z předpokladu šíření ohně po úhlopříčce v případě diagonálních sousedů, viz obrázek \ref{fig:diag-model-old}.
+	Nejzákladnější model šíření ohně je založen na sčítání spálené plochy v osmi-okolí jedné buňky. Přírůstky od jednotlivých sousedů jsou násobeny koeficientem $\mu$, který v sobě zahrnuje parametry jako hořlavost, vítr, nebo výška terénu. V případě přilehlých sousedů je doba potřebná k úplnému spálení $t=\frac{L}{R}$ (naznačeno na obrázku \ref{fig:adj-model}), kde $L$ je rozměr plochy lesa (jedné 'buňky') a $R$ je hořlavost terénu.
 	
-	\begin{figure} [H]
-		\centering
-		\caption{Starší model šíření ohně z diagonálních sousedů}
-		\label{fig:diag-model-old}
-	\end{figure}
-
-	Tvůrci článku tento model dále posouvají a počítají spálenou oblast diagonálních sousedů jako část kruhu (viz obrázek \ref{fig:diag-model-new}). Podle tvůrců článku tento přístup více odpovídá realitě.
+	V článku je popsána první modifikace základního modelu (podle \cite{old_model_art}), která rozlišuje přírůstek spálené plochy od přilehlých a diagonálních sousedů. Tato modifikace plyne z předpokladu šíření ohně po úhlopříčce v případě diagonálních sousedů, viz obrázek \ref{fig:diag-model-old}.
 	
 	\begin{figure}[H]
 		\centering
-		\caption{Model šíření ohně z diagonálních sousedů navržený v článku}
-		\label{fig:diag-model-new}
+		\begin{subfigure}{0.3 \textwidth}
+			\includegraphics[width=\linewidth]{model-adj-spread}
+			\caption{Model šíření ohnivé plochy z přilehlých sousedů}
+			\label{fig:adj-model}
+		\end{subfigure}
+		\begin{subfigure}{0.3 \textwidth}
+			\includegraphics[width=\linewidth]{old-model-diag-spread}
+			\caption{Starý šíření ohnivé plochy z diagonálních sousedů}
+			\label{fig:diag-model-old}
+		\end{subfigure}
+		\begin{subfigure} {0.3 \textwidth}
+			\includegraphics[width=\linewidth]{new-model-diag-spread}
+			\caption{Nový model šíření ohnivé plochy z diagonálních sousedů}
+			\label{fig:diag-model-new}
+		\end{subfigure}
+		\caption{Porovnání staršího a nového modelu šíření ohně z diagonálních sousedů}
 	\end{figure}
+
+	Tvůrci článku tento model dále posouvají a počítají spálenou oblast diagonálních sousedů jako část kruhu (viz obrázek \ref{fig:diag-model-new}). Podle tvůrců článku tento přístup více odpovídá realitě. U nového modelu tedy oheň z diagonálního souseda spálí za dobu $t$ plochu buňky rovnou $\frac{\pi L^2}{4L^2} \approx 0.785 \approx 78.5\%$.
 	
-	\paragraph{Parametry ovlivňující šíření ohně} Koeficient $\mu$, uvedený dříve, v sobě zahrnuje několik parametrů, které šíření ohně ovlivňují. Prvním parametrem je rychlost šíření $R [\frac{m}{s}]$, který popisuje hořlavost buňky. Dalším parametrem je výška terénu, která je pro každou buňku popsána maticí $\Phi_{i,j}$ uvedenou v \ref{eq:height-matrix}.
+	\paragraph{Parametry ovlivňující šíření ohně} Prvním parametrem je rychlost šíření $R [\frac{m}{s}]$, který popisuje hořlavost buňky. V případě nehomogenních lesů hraje v rovnici roli podíl $\frac{R_{i,j}}{R}$, kde $R$ je nejvyšší hořlavost v rámci simulovaného světa.
+	
+	Výška terénu, která je pro každou buňku popsána maticí $\Phi_{i,j}$ uvedenou v \ref{eq:height-matrix}. Oheň se po stoupajícím terénu šíří rychleji než po klesajícím \cite{source_article} a hodnoty v matici by tomu měly odpovídat: pokud terén klesá od severu k jihu, měly by hodnoty $h_{i-1,j-1}$,$h_{i,j-1}$, $h_{i+1,j-1}$ být vyšší než hodnoty zbytek hodnot v matici $\Phi_{i,j}$.
 \begin{equation}
 	\Phi_{i,j} =
 	\begin{pmatrix}
@@ -47,7 +61,7 @@
 	\label{eq:height-matrix}
 \end{equation}	
 	
-	Obdobně je řešen i vliv větru, který je popsán maticí $W_{i,j}$ uvedenou v \ref{eq:wind-matrix}.
+	Obdobně je řešen i vliv větru, který je popsán maticí $W_{i,j}$ uvedenou v \ref{eq:wind-matrix}. Matice funguje stejně, jako v případě matice s terénem. Pokud vítr fouká od severu k jihu, měly by hodnoty $w_{i-1,j-1}$,$w_{i,j-1}$, $w_{i+1,j-1}$ být větší než zbytek matice $W_{i,j}$.
 	
 	\begin{equation}
 	W_{i,j} =
@@ -59,7 +73,7 @@
 	\label{eq:wind-matrix}
 	\end{equation}	
 	
-	Rovnice \ref{eq:fire-spread-eq} popisuje model šíření ohně v buněčném automatu.
+	Po sestavení všech parametrů dohromady vznikne rovnice \ref{eq:fire-spread-eq}, která platí pro nehomogenní les. Parametry terénu a větru jsou zastoupeny koeficientem $\mu$, jehož přesný tvar je uveden v rovnici \ref{eq:mu}. Množiny $V_{adj}$ a $V_{diag}$ v sumách označují přilehlé, respektive diagonální okolí buňky.
 	
 	\begin{equation}
 	a_{i,j}^{(t+1)} = \frac{R_{i,j}}{R}a_{i,j} + 
@@ -73,8 +87,7 @@
 		\label{eq:mu}
 	\end{equation}
 	
-	\subsection{Svět interpretovaný v NetLogu}
-	Popis světa (1 tik = 1 minuta, 1 buňka = 10x10 m, šíření ohně, ...)
+	Zbytek této kapitoly představuje přípravu na zkoušku.
 	
 	\subsection{Základy pravděpodobnosti}
 	\begin{table}[H]
@@ -189,7 +202,7 @@
 	\begin{itemize}
 		\item Stř. doba setrvání ve stavu $i$: $T_i=\frac{1}{\lambda_i}$
 		\item Stř. frekvence přechodů po hraně z $i$ do $j$: $f_{i,j}=p_i\cdot\lambda_{i,j}$ (pouze bez abs stavů)
-		\item Stř. doba cyklu průchodů stavem $i$: $T_{ci} = \frac{1}{f_i}$ (pouze bes abs stavů)
+		\item Stř. doba cyklu průchodů stavem $i$: $T_{ci} = \frac{1}{f_i}$ (pouze bez abs stavů)
 	\end{itemize}
 	
 	\subsection{Systémy hromadné obsluhy}
@@ -322,6 +335,22 @@
 	
 	
 	\paragraph{Základní chyby} Korelace není kauzalita. Aritmetický průměr vs. harmonický průměr (lepší pro převrácené hodnoty). Špatná tvorba grafu (měřítko, počátek os, popis os, špatný typ grafu). Porovnávání výsledků různých benchamrků. Povaha benchmarku neodpovídá povaze reálného použití stroje/SW. Nesystematický přístup (např. při volbě parametrů). Nevhodně zvolená zátěž systému. Benchmark je známý a výrobci pro něj optimalizují.
+	
+	\section{Svět interpretovaný v NetLogu}
+	Svět simulovaný v NetLogu se rozkládá na ploše 256x256 pixelů. Jeden pixel odpovídá čtvercové ploše 10x10 metrů v reálném světě. Model v článku počítá s časovým krokem určeným podle hořlavosti terénu, v mé implementaci je časový krok konstantní (1 minuta) a hořlavost je zadávána v rozmezí $<0;1> \frac{m}{min}$. Vzhledem k tomu, že jedna buňka mého modelu má rozměr 10m, je takto zadaná hořlavost vydělena 10. Pokud tedy buňka s hořlavostí 1 bude mít jednoho přilehlého, úplně vyhořelého souseda, je doba potřebná k jejímu vyhoření 10 minut (tiků). 
+	
+	
+	Popis světa (1 tik = 1 minuta, 1 buňka = 10x10 m, šíření ohně, ...)
+	
+	Obrázek aplikace matice větru a terénu
+	
+	\subsection{Popis programu}
+	\begin{figure}
+		\centering
+		\caption{Vývojový diagram procedury go}
+		\label{fig:go-procedure}
+	\end{figure}
+	
 	
 	\section{Použití}
 	Možnost nahrávat mapy z obrázků. Možnost nastavení hořlavosti druhů terénu, možnost nastavení matice výšky terénu.

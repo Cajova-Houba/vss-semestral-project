@@ -386,10 +386,10 @@ to color-burning-patch
   ]
 
   ;; set color accordingly to burn_coef
-  if (new_burn_coef > 0.1 and new_burn_coef < 0.6) [
+  if (new_burn_coef > 0.1 and new_burn_coef <= 0.6) [
     set pcolor orange
   ]
-  if (new_burn_coef >= 0.6 and new_burn_coef < 1) [
+  if (new_burn_coef > 0.6 and new_burn_coef < 1) [
     set pcolor red
   ]
 end

@@ -21,6 +21,8 @@
 	\section{Teorie}
 	Práce implementuje model šíření lesního požáru celulárním automatem tak, jak byl navržen v \cite{source_article}. Původní simulace šíření požáru, která je dostupná v knihovnách NetLogu, byla založená na šíření ohně 'želvičkami'. Model navržený v článku předpokládá pouze buněčný automat a je vhodný po použití simulace homogenního i nehomogenního lesa (což je reálnější případ).
 	
+	Les je interpretován jako dvourozměrné pole čtvercových buněk o délce $L$. Každá buňka $[i,j]$ má v čase $t$ stav $a_{i,j} = \frac{spalena \; plocha \; [i,j]}{celkova \; plocha \; [i,j]}$ vyjadřující část spálené plochy buňky. Pokud je $a_{i,j} = 0$, je buňka netknutá, pokud je $a_{i,j} = 1$, je buňka úplně vyhořelá.
+	
 	\subsection{Model šíření ohně}
 	Nejzákladnější model šíření ohně je založen na sčítání spálené plochy v osmi-okolí jedné buňky. Přírůstky od jednotlivých sousedů jsou násobeny koeficientem $\mu$, který v sobě zahrnuje parametry jako hořlavost, vítr, nebo výška terénu. V případě přilehlých sousedů je doba potřebná k úplnému spálení $t=\frac{L}{R}$ (naznačeno na obrázku \ref{fig:adj-model}), kde $L$ je rozměr plochy lesa (jedné 'buňky') a $R$ je hořlavost terénu.
 	
@@ -46,7 +48,14 @@
 		\caption{Porovnání staršího a nového modelu šíření ohně z diagonálních sousedů}
 	\end{figure}
 
-	Tvůrci článku tento model dále posouvají a počítají spálenou oblast diagonálních sousedů jako část kruhu (viz obrázek \ref{fig:diag-model-new}). Podle tvůrců článku tento přístup více odpovídá realitě. U nového modelu tedy oheň z diagonálního souseda spálí za dobu $t$ plochu buňky rovnou $\frac{\pi L^2}{4L^2} \approx 0.785 \approx 78.5\%$.
+	Tvůrci článku tento model dále posouvají a počítají spálenou oblast diagonálních sousedů jako část kruhu (viz obrázek \ref{fig:diag-model-new}). Podle tvůrců článku tento přístup více odpovídá realitě. U nového modelu tedy oheň z diagonálního souseda spálí za dobu $t$ plochu buňky rovnou $\frac{\pi L^2}{4L^2} \approx 0.785 \approx 78.5\%$. Pro úplnost je na obrázku \ref{fig:full-model} znázorněn úplný model šíření ohně z jedné buňky do svých sousedů.
+	
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=6cm]{model-full-spread}
+		\caption{Úplný model šíření ohně z buňky}
+		\label{fig:full-model}
+	\end{figure}
 	
 	\paragraph{Parametry ovlivňující šíření ohně} Prvním parametrem je rychlost šíření $R [\frac{m}{s}]$, který popisuje hořlavost buňky. V případě nehomogenních lesů hraje v rovnici roli podíl $\frac{R_{i,j}}{R}$, kde $R$ je nejvyšší hořlavost v rámci simulovaného světa.
 	
@@ -337,10 +346,7 @@
 	\paragraph{Základní chyby} Korelace není kauzalita. Aritmetický průměr vs. harmonický průměr (lepší pro převrácené hodnoty). Špatná tvorba grafu (měřítko, počátek os, popis os, špatný typ grafu). Porovnávání výsledků různých benchamrků. Povaha benchmarku neodpovídá povaze reálného použití stroje/SW. Nesystematický přístup (např. při volbě parametrů). Nevhodně zvolená zátěž systému. Benchmark je známý a výrobci pro něj optimalizují.
 	
 	\section{Svět interpretovaný v NetLogu}
-	Svět simulovaný v NetLogu se rozkládá na ploše 256x256 pixelů. Jeden pixel odpovídá čtvercové ploše 10x10 metrů v reálném světě. Model v článku počítá s časovým krokem určeným podle hořlavosti terénu, v mé implementaci je časový krok konstantní (1 minuta) a hořlavost je zadávána v rozmezí $<0;1> \frac{m}{min}$. Vzhledem k tomu, že jedna buňka mého modelu má rozměr 10m, je takto zadaná hořlavost vydělena 10. Pokud tedy buňka s hořlavostí 1 bude mít jednoho přilehlého, úplně vyhořelého souseda, je doba potřebná k jejímu vyhoření 10 minut (tiků). 
-	
-	
-	Popis světa (1 tik = 1 minuta, 1 buňka = 10x10 m, šíření ohně, ...)
+	Svět simulovaný v NetLogu se rozkládá na ploše 256x256 pixelů. Jeden pixel odpovídá čtvercové ploše 10x10 metrů v reálném světě. Model v článku počítá s časovým krokem určeným podle hořlavosti terénu, v mé implementaci je časový krok konstantní (1 minuta) a hořlavost je zadávána v rozmezí $<0;1> \frac{m}{min}$. Vzhledem k tomu, že jedna buňka mého modelu má rozměr 10m, je takto zadaná hořlavost vydělena 10. Pokud tedy buňka s hořlavostí 1 bude mít jednoho přilehlého, úplně vyhořelého souseda, je doba potřebná k jejímu vyhoření 10 minut (tiků). Kvůli naakumulované chybě ve floatu však bude potřeba o 1 tik navíc, protože po 10 ticích bude spáleno 99,9999999999999\% plochy buňky.
 	
 	Obrázek aplikace matice větru a terénu
 	

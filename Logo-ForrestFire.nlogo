@@ -71,7 +71,7 @@ to setup
 end
 
 ;; Setup the wrold without image
-to setup-generate
+to setup-random
   ;; global setup
   setup
 
@@ -93,7 +93,7 @@ to setup-generate
   ask patches with [(random-float 100) < density]
     [
       set pcolor green
-      set fire_spread (global-fire-spread / 10)
+      set fire_spread global-fire-spread
   ]
 
   ;; create random lake
@@ -111,11 +111,77 @@ to setup-generate
     ]
   ]
 
+  ;; set tree counts
+  set initial_trees count patches with [pcolor = green]
+
   ;; make a column of burning trees
   start-fire
 
+  ;; set R_max
+  set-r-max
+
+  reset-ticks
+end
+
+;; Fire spread in forest of width 1.
+;; Fire will spread from left to right.
+to setup-test-horizontal
+  ;; global setup
+  setup
+
+  ask patches [
+    set pcolor brown
+    set fire_spread 0
+    set burn_coef 0
+  ]
+
+  ask patches with [pycor = 0 and pxcor <= -124] [
+    set pcolor green
+    set fire_spread (global-fire-spread)
+  ]
+
   ;; set tree counts
   set initial_trees count patches with [pcolor = green]
+
+  ;; start fire at -125 0
+  ask patch -125 0 [
+    set burn_coef 1
+    set fire_spread global-fire-spread
+    burn-out
+  ]
+
+  ;; set R_max
+  set-r-max
+
+  reset-ticks
+end
+
+;; Setup world for diagonal fire spread test
+;; Fire will spread from NW to SE
+to setup-test-diagonal
+  ;; global setup
+  setup
+
+  ask patches [
+    set pcolor brown
+    set fire_spread 0
+    set burn_coef 0
+  ]
+
+  ask patches with [(- pycor) = pxcor and pycor >= 124] [
+    set pcolor green
+    set fire_spread global-fire-spread
+  ]
+
+  ;; set tree counts
+  set initial_trees count patches with [pcolor = green]
+
+    ;; start fire at -125 125
+  ask patch -125 125 [
+    set burn_coef 1
+    set fire_spread global-fire-spread
+    burn-out
+  ]
 
   ;; set R_max
   set-r-max
@@ -160,7 +226,7 @@ to setup-image
   ;; fire spreads with different speed on grass than in the woods
   ask patches with [pcolor = green]
   [
-    set fire_spread (global-fire-spread / 20.0)
+    set fire_spread (global-fire-spread * 2)
   ]
 
   ;; find woods and add dirt accordingly to density
@@ -169,7 +235,7 @@ to setup-image
     ifelse ((random-float 100) < density)
     [
       ;; patch is a tree
-      set fire_spread global-fire-spread / 10.0
+      set fire_spread global-fire-spread
     ]
     [
       ;; patch is a dirt
@@ -187,12 +253,11 @@ to setup-image
     set fire_spread 0
   ]
 
+  ;; set tree counts
+  set initial_trees count patches with [pcolor = 63]
 
   ;; start a fire
   start-fire
-
-  ;; set tree counts
-  set initial_trees count patches with [pcolor = 63]
 
   ;; set R_max
   set-r-max
@@ -205,18 +270,14 @@ to start-fire
   set burned_trees 0
   ask patches with [pxcor = fire_start_x and pycor = fire_start_y]
     [
-      set fire_spread global-fire-spread / 10.0
+      set fire_spread global-fire-spread
       set burn_coef 1
       burn-out
   ]
 end
 
-
-;; Main procecure
-to go
-  ;; variable used later for stop condition check
-  let curr_burn_trees burned_trees
-
+;; Performs one step of fire spread (one iteration of whole cellular automata)
+to fire-spread-step
   ;; select unburned or partially burned cells
   ask patches with [(burn_coef >= 0) and (burn_coef < 1) and (fire_spread > 0)]
   ;;ask patch 0 1
@@ -245,7 +306,7 @@ to go
     if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + (item 0 wind_matrix) * (item 0 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[SE]
 
     ;; total burned area
-    let burned_area ((adj_burn / R_max) + (0.785 * diag_burn / R_max_pow))
+    let burned_area (((adj_burn / R_max) + (0.785 * diag_burn / R_max_pow)) * (R_max / 10))
 
     ;; burn_coef * R_ij/R + total burned area
     set new_burn_coef ((burn_coef * fire_spread / R_max) + burned_area)
@@ -254,19 +315,20 @@ to go
       set new_burn_coef 0
     ]
 
+    ;; assign color to patch
+    ;color-burning-patch
     ;; new tree has caught fire
-    if (new_burn_coef > 0 and burn_coef = 0) [
-      ignite-new
-    ]
+    ;if (new_burn_coef > 0 and burn_coef = 0) [
+    ;  ignite-new
+    ;]
 
-    ;; update fire color
-    if (new_burn_coef > 0.2 and new_burn_coef < 0.6) [
-      set pcolor red + 3
-    ]
-
-    if (new_burn_coef >= 0.6 and new_burn_coef < 1) [
-      set pcolor red
-    ]
+    ;; set color accordingly to burn_coef
+    ;if (new_burn_coef > 0.1 and new_burn_coef < 0.6) [
+    ;  set pcolor red + 3
+    ;]
+    ;if (new_burn_coef >= 0.6 and new_burn_coef < 1) [
+    ;  set pcolor red
+    ;]
 
     ;; burned out tree
     if (new_burn_coef >= 1) [
@@ -279,6 +341,22 @@ to go
     set burn_coef new_burn_coef
     set new_burn_coef 0
   ]
+end
+
+;; Performs one step and ticks
+to do-one-step
+  fire-spread-step
+
+  tick
+end
+
+;; Main procecure
+to go
+  ;; variable used later for stop condition check
+  let curr_burn_trees burned_trees
+
+  ;; one iteration of cellular automata
+  fire-spread-step
 
   ;; if no new trees were burned and no patches are burning (burn_coeficient > 0 but < 1), stop
   let burning_patches_count count patches with [burn_coef > 0 and burn_coef < 1]
@@ -295,8 +373,25 @@ end
 ;; ignites given patch
 ;; sets its color to red
 to ignite-new
+  set pcolor red + 4
   ;;set pcolor red + 3
   ;;set burned_trees burned_trees + 1
+end
+
+;; Assigns color to the patch based on its' new_burn_coef
+to color-burning-patch
+  ;; new tree has caught fire
+  if (new_burn_coef > 0 and burn_coef = 0) [
+    set pcolor yellow
+  ]
+
+  ;; set color accordingly to burn_coef
+  if (new_burn_coef > 0.1 and new_burn_coef < 0.6) [
+    set pcolor orange
+  ]
+  if (new_burn_coef >= 0.6 and new_burn_coef < 1) [
+    set pcolor red
+  ]
 end
 
 ;; burns the cell out
@@ -374,10 +469,10 @@ density
 HORIZONTAL
 
 BUTTON
-931
-107
-1000
-143
+988
+108
+1057
+144
 go
 go
 T
@@ -437,9 +532,9 @@ SLIDER
 global-fire-spread
 global-fire-spread
 0
-1
-0.94
-0.01
+10
+10.0
+0.1
 1
 m/min
 HORIZONTAL
@@ -450,7 +545,7 @@ INPUTBOX
 69
 202
 height-NW
-1.5
+1.0
 1
 0
 Number
@@ -461,7 +556,7 @@ INPUTBOX
 132
 202
 height-N
-1.5
+1.0
 1
 0
 Number
@@ -472,7 +567,7 @@ INPUTBOX
 206
 203
 height-NE
-1.5
+1.0
 1
 0
 Number
@@ -505,7 +600,7 @@ INPUTBOX
 71
 344
 height-SW
-0.5
+1.0
 1
 0
 Number
@@ -516,7 +611,7 @@ INPUTBOX
 140
 347
 height-S
-0.5
+1.0
 1
 0
 Number
@@ -527,7 +622,7 @@ INPUTBOX
 208
 350
 height-SE
-0.5
+1.0
 1
 0
 Number
@@ -571,7 +666,7 @@ BUTTON
 907
 187
 Setup random
-setup-generate
+setup-random
 NIL
 1
 T
@@ -680,6 +775,57 @@ wind-SE
 1
 0
 Number
+
+BUTTON
+794
+200
+960
+233
+Setup for horizontal test
+setup-test-horizontal
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+794
+245
+952
+278
+Setup for diagonal test
+setup-test-diagonal
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+1073
+111
+1155
+144
+One step
+do-one-step
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?

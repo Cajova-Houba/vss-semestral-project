@@ -7,13 +7,12 @@ globals [
   max_ticks           ;; Special stopping condition for tests
 ]
 
-;; burn coefficient of individual patch
-;; 0: unburned
-;; > 0: partially burned
-;; 1: burned
 patches-own [
   ;; new_burn_coef will be moved to burn_coef
   ;; after all patches are processed
+  ;; 0: unburned
+  ;; > 0: partially burned
+  ;; 1: burned
   burn_coef
   new_burn_coef
 
@@ -52,23 +51,6 @@ to setup
 
   ;; max_ticks turned off by default
   set max_ticks -1
-
-  ;; init height matrix
-  ;; height matrix contains data adjust accordingly to model (h_i,j = f(H_center - H_i,j))
-  ;; height matrix is constant in time
-  ;; heights can be in range from 0 to 2 so that max(min) height difference is 2 (-2)
-  ;; exp(dh) will then map this height difference to range from 0,3679 (downhill) to 2,7183 (uphill)
-  ;;set height_matrix (list
-  ;;  exp((height-NW - height-C) / 2.0)
-  ;;  exp((height-N - height-C) / 2.0)
-  ;;  exp((height-NE - height-C) / 2.0)
-  ;;  exp((height-W - height-C) / 2.0)
-  ;;  exp((height-C - height-C) / 2.0)
-  ;;  exp((height-E - height-C) / 2.0)
-  ;;  exp((height-SW - height-C) / 2.0)
-  ;;  exp((height-S - height-C) / 2.0)
-  ;;  exp((height-SE - height-C) / 2.0)
-  ;; )
 end
 
 ;; Setup the wrold without image
@@ -84,7 +66,43 @@ to setup-random
       set burn_coef 0
       set new_burn_coef 0
       set fire_spread 0
+      set pcolor brown
+    ]
+
+
+  ;; make some green trees
+  ;; and set their fire_spread
+  ask patches with [(random-float 100) < density]
+    [
+      set pcolor green
+      set fire_spread global-fire-spread
   ]
+
+  ;; create random lake
+  ask patch random-pxcor random-pycor
+  [
+    set pcolor blue
+    set fire_spread 0
+    ask neighbors [
+      set pcolor blue
+      set fire_spread 0
+      ask neighbors [
+        set pcolor blue
+        set fire_spread 0
+      ]
+    ]
+  ]
+
+  ;; set tree counts
+  set initial_trees count patches with [pcolor = green]
+
+  ;; make a column of burning trees
+  start-fire
+
+  ;; set R_max
+  set-r-max
+
+  reset-ticks
 end
 
 ;; Fire spread in forest of width 1.
@@ -489,7 +507,7 @@ density
 density
 0.0
 99.0
-77.0
+55.0
 1.0
 1
 %
@@ -560,7 +578,7 @@ global-fire-spread
 global-fire-spread
 0
 10
-6.1
+1.0
 0.1
 1
 m/min
@@ -671,7 +689,7 @@ INPUTBOX
 77
 662
 fire_start_x
--60.0
+0.0
 1
 0
 Number

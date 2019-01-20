@@ -70,7 +70,7 @@
 	\label{eq:height-matrix}
 \end{equation}	
 	
-	Obdobně je řešen i vliv větru, který je popsán maticí $W_{i,j}$ uvedenou v \ref{eq:wind-matrix}. Matice funguje stejně, jako v případě matice s terénem. Pokud vítr fouká od severu k jihu, měly by hodnoty $w_{i-1,j-1}$,$w_{i,j-1}$, $w_{i+1,j-1}$ být větší než zbytek matice $W_{i,j}$.
+	Obdobně je řešen i vliv větru, který je popsán maticí $W_{i,j}$ uvedenou v \ref{eq:wind-matrix}. Matice funguje opačně než v případě výšky terénu. Pokud vítr fouká od severu k jihu, měly by hodnoty $w_{i-1,j-1}$,$w_{i,j-1}$, $w_{i+1,j-1}$ být větší než zbytek matice $W_{i,j}$.
 	
 	\begin{equation}
 	W_{i,j} =
@@ -346,11 +346,11 @@
 	\paragraph{Základní chyby} Korelace není kauzalita. Aritmetický průměr vs. harmonický průměr (lepší pro převrácené hodnoty). Špatná tvorba grafu (měřítko, počátek os, popis os, špatný typ grafu). Porovnávání výsledků různých benchamrků. Povaha benchmarku neodpovídá povaze reálného použití stroje/SW. Nesystematický přístup (např. při volbě parametrů). Nevhodně zvolená zátěž systému. Benchmark je známý a výrobci pro něj optimalizují.
 	
 	\section{Svět interpretovaný v NetLogu}
-	Svět simulovaný v NetLogu se rozkládá na ploše 256x256 pixelů. Jeden pixel odpovídá čtvercové ploše 10x10 metrů v reálném světě. Model v článku počítá s časovým krokem určeným podle hořlavosti terénu, v mé implementaci je časový krok konstantní (1 minuta) a hořlavost je zadávána v rozmezí $<0;1> \frac{m}{min}$. 
+	Svět simulovaný v NetLogu se rozkládá na ploše 256x256 pixelů. Jeden pixel odpovídá čtvercové ploše 10x10 metrů v reálném světě. Model v článku počítá s časovým krokem určeným podle hořlavosti terénu, v mé implementaci je časový krok konstantní (1 minuta) a hořlavost je zadávána v rozmezí $<0;10> \frac{m}{min}$. 
 	
-	Vzhledem k tomu, že jedna buňka mého modelu má rozměr 10m, je celkový přírůstek spálené plochy ze všech sousedů vynásoben koeficientem $\frac{R_max}{10}$. Pokud tedy buňka s hořlavostí 1 bude mít jednoho přilehlého, úplně vyhořelého souseda, je doba potřebná k jejímu vyhoření 10 minut (tiků). Kvůli naakumulované chybě ve floatu však bude potřeba o 1 tik navíc, protože po 10 ticích bude spáleno 99,9999999999999\% plochy buňky.
+	Vzhledem k tomu, že jedna buňka mého modelu má rozměr 10m, je celkový přírůstek spálené plochy ze všech sousedů vynásoben koeficientem $\frac{R_{max}}{10}$. Pokud tedy buňka s hořlavostí 1 bude mít jednoho přilehlého, úplně vyhořelého souseda, je doba potřebná k jejímu vyhoření 10 minut (tiků). Kvůli interpretaci desetinných čísel ve floatu však bude potřeba o 1 tik navíc, protože po 10 ticích bude spáleno 99,9999999999999\% plochy buňky.
 	
-	Buňka v automatu popsaném článku může nabývat pouze dvou stavů: spálená a nespálená. Pro drobné zpestření jsem přidal dva stavy navíc, které umožňují rozeznat různé stupně spálenosti. Rozsahy a příslušné obarvení je uvedeno v tabulce \ref{tab:patch-color}. Pro úplnost je program možné přepnout na režim uvedený v článku, kdy si buňka nechá svou původní barvu až dokud nebude celá spálená. Výhodou tohoto zbarvení je možnost pozorovat jak se oheň šíří mezi buňkami, které jsou jen částečně spálené.
+	Buňka automatu popsaném v článku může nabývat pouze dvou stavů: spálená a nespálená. Pro drobné zpestření jsem přidal dva stavy navíc, které umožňují rozeznat různé stupně spálenosti. Rozsahy a příslušné obarvení je uvedeno v tabulce \ref{tab:patch-color}. Pro úplnost je program možné přepnout na režim uvedený v článku, kdy si buňka nechá svou původní barvu až dokud nebude celá spálená. Výhodou tohoto zbarvení je možnost pozorovat jak se oheň šíří mezi buňkami, které jsou jen částečně spálené.
 	
 	\begin{table}[H]
 		\centering
@@ -406,6 +406,8 @@
 		\hline
 		sky & 45,141,190 & Voda & 0 \\
 		\hline
+		brown & 157,110,72 & Hlína & 0 \\
+		\hline
 		\end{tabular}
 		\caption{Vlastnosti a barvy jednotlivých typů terénů}
 		\label{tab:terrain-types}
@@ -423,7 +425,7 @@
 	\end{figure}
 	
 	\subsection{Parametry programu}
-	Prvním z nastavitelných parametrů je hustota zalesnění (\textit{density}), ten určuje poměr buněk představujícím zalesněnou plochu vůči buňkám představujícím plochu bez stromů. V případě načtení mapy ze souboru bude tato hustota aplikována pouze na buňky, které představují les, na jiné materiály se tento parametr nevztahuje.
+	Prvním z nastavitelných parametrů je hustota zalesnění (\textit{density}), ten určuje poměr buněk se zalesněnou plochou vůči buňkám s plochou bez stromů. V případě načtení mapy ze souboru bude tato hustota aplikována pouze na buňky, které představují les, na jiné materiály se tento parametr nevztahuje.
 	
 	Druhým parametrem je rychlost šíření ohně u stromů (\textit{global-fire-spread}). Parametr je zadávaný v $\frac{m}{min}$ a určuje, jak rychle se bude oheň šířit po zalesněné ploše.
 	
@@ -525,7 +527,7 @@
 	\label{eq:test-2-h-w}
 	\end{equation}
 	
-	Srovnání výsledků mého programu s výsledky publikovanými v článku je znázorněno na obrázcích \ref{fig:test-2-res-art} a \ref{fig:test-2-res-mine}. Bílá tečka označuje počátek ohně. Opět je zřejmé, že zaoblení v mé implementaci není tak intenzivní jako v případě článku. Zároveň je kruhová část otočená na opačnou stranu, což může plynout z obrácené aplikace matice s výškou terénu.
+	Srovnání výsledků mého programu s výsledky publikovanými v článku je znázorněno na obrázcích \ref{fig:test-2-res-art} a \ref{fig:test-2-res-mine}. Bílá tečka označuje počátek ohně. 
 	
 	
 	\begin{figure}[H]
@@ -566,7 +568,7 @@
 		\label{fig:test-3-res}
 	\end{figure}
 
-	Poslední test předpokládá nehomogenní prostředí, stejné jako v předchozím případě, a navíc jsou aplikovány i vlivy větru a členitosti terénu (matice \ref{eq:test-2-h-w}). Srovnání výsledků mého programu s výsledky publikovanými v článku je znázorněno na obrázcích \ref{fig:test-4-res-art} a \ref{fig:test-4-res-mine}. Z obrázků je patrné, že se výsledky liší pouze v zaoblení.
+	Poslední test předpokládá nehomogenní prostředí, stejné jako v předchozím případě, a navíc jsou aplikovány i vlivy větru a členitosti terénu (matice \ref{eq:test-2-h-w}). Srovnání výsledků mého programu s výsledky publikovanými v článku je znázorněno na obrázcích \ref{fig:test-4-res-art} a \ref{fig:test-4-res-mine}. Z obrázků je patrné, že výsledky jsou velmi podobné a liší se pouze v zaoblení.
 	
 	\begin{figure}[H]
 		\centering
@@ -586,8 +588,37 @@
 		\label{fig:test-4-res}
 	\end{figure}
 	
+	\subsection{Porovnání s realitou}
+	Součástí testů je i porovnání simulace s reálnými požáry. Má simulace byla spuštěna s hustotou zalesnění 55\%, $R=1$. Vliv větru a terénu nebyl aplikován. Z 65553 buněk bylo 34836 zalesněných z nichž 34650 shořelo. To odpovídá ploše 3,465 $km^2$. Simulace trvala 521 tiků, což odpovídá 521 minutám (8,68 hod). Rychlost spálení je tedy rovna 0,399 $\frac{km^2}{hod}$. K porovnání jsem vybral několik případů s obdobným rozsahem škod a uvedl je v tabulce \ref{tab:real-compare}. Doba trvání požárů je počítána jako $24\cdot doba\_pozaru\_dny$. Data k porovnání byla  brána z \cite{wiki-fires}.
+	
+	\begin{table}
+		\centering
+		\begin{tabular}{|c|c|c|c|c|}
+			\hline
+			Název požáru & Místo & Rozsah škod & Doba trvání & Rychlost \\
+			&& [$km^2$] & [h] & [$\frac{km^2}{hod}$] \\
+			\hline
+			Simulace & & 3,465 & 8,680 & 0,399 \\
+			\hline
+			Blackwater Fire & Wyoming, USA & 7 & 144 & 0,049 \\
+			\hline
+			Rattlesnake Fire & California, USA & 5,3 & 48 & 0,110 \\
+			\hline
+			& Honshu, Japonsko & 3,4 & 24 & 0,142 \\
+			\hline
+			Mount Carmel forest fire & Israel & 6 & 72 & 0,083 \\
+			\hline
+		\end{tabular}
+		\caption{Porovnání výsledků simulace s reálnými požáry}
+		\label{tab:real-compare}.
+	\end{table}
+
+	Z tabulky je vidět, že simulace je několikrát rychlejší, než reálné případy. To může být způsobeno uvedením špatné doby požáru, nebo faktem, že v simulaci se požár nikdo nesnaží zastavit.
+
 	\section{Závěr}
-	Model se mi podařilo úspěšně na-implementovat a testy mé implementace dopadly obdobně jako testy uvedené v článku.
+	Model se mi podařilo úspěšně na-implementovat a testy mé implementace dopadly obdobně jako testy uvedené v článku. K porovnání mých výsledků s reálnými daty jsem bohužel nenašel dostatek obrazových materiálů. Číselná data jsou poměrně nepřesná: simulace je počítána na minuty, reálné požáry na hodiny až dny.
+	
+	V budoucnu by bylo dobré program rozšířit o možnost načíst data o výšce terénu ze souboru a umožnit změnu větru v čase. Tím by se daly částečně 'zreplikovat' reálné lesní požáry a porovnání výsledků by mohlo být přesnější.
 	
 	\begin{thebibliography}{9}
 		
@@ -596,6 +627,9 @@
 		
 		\bibitem{old_model_art}
 		KARAFYLLIDIS, Ioannis a THANAILAKIS, Adonios. A model for predicting forest fire spreading using cellular automata. \textit{Ecol Model} 1997, 99, 87–97.
+		
+		\bibitem{wiki-fires}
+		"List of wildfires." \textit{Wikipedia: The Free Encyclopedia}. Wikipedia, The Free Encyclopedia, 8. ledna 2019. Web. 18. ledna 2019,https://en.wikipedia.org/wiki/List\_of\_wildfires
 	\end{thebibliography}
 	
 \end{document}

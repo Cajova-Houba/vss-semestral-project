@@ -59,13 +59,13 @@
 	
 	\paragraph{Parametry ovlivňující šíření ohně} Prvním parametrem je rychlost šíření $R [\frac{m}{s}]$, který popisuje hořlavost buňky. V případě nehomogenních lesů hraje v rovnici roli podíl $\frac{R_{i,j}}{R}$, kde $R$ je nejvyšší hořlavost v rámci simulovaného světa.
 	
-	Výška terénu, která je pro každou buňku popsána maticí $\Phi_{i,j}$ uvedenou v \ref{eq:height-matrix}. Oheň se po stoupajícím terénu šíří rychleji než po klesajícím \cite{source_article} a hodnoty v matici by tomu měly odpovídat: pokud terén klesá od severu k jihu, měly by hodnoty $h_{i-1,j-1}$,$h_{i,j-1}$, $h_{i+1,j-1}$ být vyšší než hodnoty zbytek hodnot v matici $\Phi_{i,j}$.
+	Vliv terénu je pro každou buňku popsán maticí $\Phi_{i,j}$ uvedenou v \ref{eq:height-matrix}. Hodnoty matice by měly být dány rozdílem výšek sousedních buněk od centrální buňky: $h_{i+\alpha,b+\beta} = F(H_{i+\alpha,b+\beta} - H_{i,j})$. Přesný tvar funkce $F()$ se mi v článcích \cite{source_article} a \cite{old_model_art} nepodařilo najít. Z publikovaných výsledků testů však plyne, že vyšší hodnoty v matici odpovídají nižším sousedům. Pokud je tedy buňka $[i+\alpha, j+\beta]$ vyšší než buňka $[i,j]$, bude platit, že $h_{i+\alpha, j+\beta} < h_{i,j}$.
 \begin{equation}
 	\Phi_{i,j} =
 	\begin{pmatrix}
-	h_{i-1,j-1}       & h_{i,j-1} & h_{i+1,j-1} \\
-	h_{i-1,j}       & 1 & h_{i+1,j} \\
-	h_{i-1,j+1}       & h_{i,j+1} & h_{i+1,j+1} \\
+	h_{i-1,j-1}       & h_{i-1,j} & h_{i+1,j+1} \\
+	h_{i,j-1}       & 1 & h_{i,j+1} \\
+	h_{i+1,j-1}       & h_{i+1,j} & h_{i+1,j+1} \\
 	\end{pmatrix}
 	\label{eq:height-matrix}
 \end{equation}	
@@ -75,9 +75,9 @@
 	\begin{equation}
 	W_{i,j} =
 	\begin{pmatrix}
-	w_{i-1,j-1}       & w_{i,j-1} & w_{i+1,j-1} \\
-	w_{i-1,j}       & 1 & h_{i+1,j} \\
-	w_{i-1,j+1}       & w_{i,j+1} & w_{i+1,j+1} \\
+	w_{i-1,j-1}       & w_{i-1,j} & w_{i+1,j+1} \\
+	w_{i,j-1}       & 1 & h_{i,j+1} \\
+	w_{i+1,j-1}       & w_{i+1,j} & w_{i+1,j+1} \\
 	\end{pmatrix}
 	\label{eq:wind-matrix}
 	\end{equation}	
@@ -350,7 +350,7 @@
 	
 	Vzhledem k tomu, že jedna buňka mého modelu má rozměr 10m, je celkový přírůstek spálené plochy ze všech sousedů vynásoben koeficientem $\frac{R_max}{10}$. Pokud tedy buňka s hořlavostí 1 bude mít jednoho přilehlého, úplně vyhořelého souseda, je doba potřebná k jejímu vyhoření 10 minut (tiků). Kvůli naakumulované chybě ve floatu však bude potřeba o 1 tik navíc, protože po 10 ticích bude spáleno 99,9999999999999\% plochy buňky.
 	
-	Buňka v automatu popsaném článku může nabývat pouze dvou stavů: spálená a nespálená. Pro drobné zpestření jsem přidal dva stavy navíc, které umožňují rozeznat různé stupně spálenosti. Rozsahy a příslušné obarvení je uvedeno v tabulce \ref{tab:patch-color}.
+	Buňka v automatu popsaném článku může nabývat pouze dvou stavů: spálená a nespálená. Pro drobné zpestření jsem přidal dva stavy navíc, které umožňují rozeznat různé stupně spálenosti. Rozsahy a příslušné obarvení je uvedeno v tabulce \ref{tab:patch-color}. Pro úplnost je program možné přepnout na režim uvedený v článku, kdy si buňka nechá svou původní barvu až dokud nebude celá spálená. Výhodou tohoto zbarvení je možnost pozorovat jak se oheň šíří mezi buňkami, které jsou jen částečně spálené.
 	
 	\begin{table}[H]
 		\centering
@@ -374,21 +374,217 @@
 		\label{tab:patch-color}
 	\end{table}
 	
-	Obrázek aplikace matice větru a terénu
 	
 	\subsection{Popis programu}
-	\begin{figure}
+	Program obsahuje globální proměnné pro sledování celkové spálené plochy, maximální rychlosti šíření ohně a zastavovací podmínku pro testy. Jak již bylo řečeno, program neobsahuje 'želvičky' a pracuje pouze s buňkami světa (patches). Každá buňka nese informaci o velikosti spálené plochy (v čase $t$ a $t+1$) a rychlosti šíření ohně.
+	
+	Hlavní procedura programu je \textit{fire-spread-step}, která provede jeden krok evoluce nad buněčným automatem. Činnost procedury je vyjádřena na obrázku \ref{fig:go-procedure}. 
+	
+	\begin{figure}[H]
 		\centering
-		\caption{Vývojový diagram procedury go}
+		\includegraphics[height=9cm]{go-flowchart}
+		\caption{Činnost procedury \textit{fire-spread-step}}
 		\label{fig:go-procedure}
 	\end{figure}
 	
+	\subsection{Načítání mapy z obrázků}
+	Načítání mapy z obrázků je řešeno v proceduře \textit{setup-image}. Předpokládá se, že obrázek je umístěn ve složce \verb|./img/| a má jméno \verb|source.bmp|. Program rozpoznává několik druhů terénu podle barev jednotlivých pixelů, které musí přesně odpovídat barvám definovaným v NetLogu (pokud barva neodpovídá, je buňka nastavená jako nehořlavá). Typy terénu jsou popsané v tabulce \ref{tab:terrain-types}, hodnou $R$ nastavuje uživatel.
 	
-	\section{Použití}
-	Možnost nahrávat mapy z obrázků. Možnost nastavení hořlavosti druhů terénu, možnost nastavení matice výšky terénu.
+	\begin{table}[H]
+		\centering
+		\begin{tabular}{|c|c|c|c|}
+		\hline
+		Barva pixelu & Barva pixelu & Typ terénu & $R_{teren}$ \\
+		NetLogo & RGB & & \\
+		\hline
+		\hline
+		white & 0,0,0 & Silnice, budova & 0 \\
+		\hline
+		green & 89,176,60 & Tráva, louka & $2R$ \\
+		\hline 
+		lime - 2 &  26,129,36 & Les & $R$ \\
+		\hline
+		sky & 45,141,190 & Voda & 0 \\
+		\hline
+		\end{tabular}
+		\caption{Vlastnosti a barvy jednotlivých typů terénů}
+		\label{tab:terrain-types}
+	\end{table}
+	
+	
+	\section{Uživatelská příručka}
+	Po otevření programu v NetLogu je zobrazeno ovládací rozhraní (obrázek \ref{fig:netlog-interface}), skrze které je možné nastavení parametrů a ovládání simulace.
+	
+	\begin{figure}[H]
+		\centering
+		\includegraphics[width=14.5cm]{interface}
+		\caption{Program otevřený v Netlogu}
+		\label{fig:netlog-interface}
+	\end{figure}
+	
+	\subsection{Parametry programu}
+	Prvním z nastavitelných parametrů je hustota zalesnění (\textit{density}), ten určuje poměr buněk představujícím zalesněnou plochu vůči buňkám představujícím plochu bez stromů. V případě načtení mapy ze souboru bude tato hustota aplikována pouze na buňky, které představují les, na jiné materiály se tento parametr nevztahuje.
+	
+	Druhým parametrem je rychlost šíření ohně u stromů (\textit{global-fire-spread}). Parametr je zadávaný v $\frac{m}{min}$ a určuje, jak rychle se bude oheň šířit po zalesněné ploše.
+	
+	Následují parametry pro zadání matice terénu a větru. Z úsporných důvodů je možné zadat pouze matici lokálního okolí buňky a ne individuální výšku každé buňky. Matice terénu a větru lze zresetovat na hodnoty $1$ (tlačítko \textit{Reset height and wind}). Posledním parametrem, který lze zadat je počáteční bod požáru.
+
+	\subsection{Ovládání simulace}
+	Nastavení před obecnou simulací je možno provést tlačítky \textit{Setup from file}, které načte mapu ze souboru \verb|./img/source.bmp|, a \text{Setup random}, které vygeneruje náhodný les. Ostatní tlačítka \textit{Setup *} slouží k nastavení testů simulace. Přepínačem \textit{fire-multicolor} lze přepínat mezi režimy obarvení buňky podle spálené plochy. Rozdíly jsou znázorněné na obrázku \ref{fig:multicolor-compare}.
+	
+	Simulace se spouští tlačítkem \textit{Go} a je ukončena, když se oheň nemá jak šířit. Simulaci je také možné krokovat tlačítkem \textit{One step}, které provede jednu iteraci buněčného automatu.
+	
+	Výsledek simulace je možné uložit do souboru \verb|view.png| tlačítkem \textit{Save to image}. Během simulace je také možné sledovat počet spálených buněk a celkové procento spálené plochy.
+	
+	\begin{figure}[H]
+		\centering
+		\begin{subfigure}{0.3 \textwidth}
+			\includegraphics[width=\linewidth]{bi-color-example}
+			\caption{Vypnuté \textit{fire-multicolor}}
+		\end{subfigure}
+		\hspace*{0.1 \textwidth}
+		\begin{subfigure}{0.3 \textwidth}
+			\includegraphics[width=\linewidth]{multicolor-example}
+			\caption{Zapnuté \textit{fire-multicolor}}
+		\end{subfigure}
+		\caption{Srovnání módů obarvení ohnivé plochy}
+		\label{fig:multicolor-compare}
+	\end{figure}
+	
+	\subsection{Spouštění testů}
+	Program obsahuje několik předpřipravených testů, které slouží k ověření implementace. Testy samy nastavují rychlost šíření ohně a parametr hustoty zalesnění ignorují. Testy se spouští stejně, jako obecná simulace tlačítky \textit{Go} a \textit{One step}.
+	
+	\paragraph{Horizontal test}
+	Obsahuje dvě buňky a testuje šíření ohně z jedné buňky (souřadnice -125 0) na jejího souseda (souřadnice -124 0).
+	
+	\paragraph{Diagonal test}
+	Obsahuje dvě buňky a testuje šíření ohně z jedné buňky (souřadnice -125 125) na jejího souseda (souřadnice -124 124).
+	
+	\paragraph{Homogeneous test}
+	Testuje šíření ohně ze středu v homogenním prostředí (rychlost šíření $R$ je stejná pro všechny buňky). Tento test je také použit ve zdrojovém článku.
+	
+	\paragraph{Inhomogeneous test}
+	Testuje šíření ohně ze středu v nehomogenním prostředí. II. a I. kvadrant mají nejnižší $R$, IV. kvadrant nejvyšší. Tento test je také použit ve zdrojovém článku.
 	
 	\section{Testování}
-	Testy v článku, obrázky z mého programu, srovnání
+	V článku \cite{source_article} jsou popsány celkem 4 testy, které kombinují parametry větru a terénu s homogenním a nehomogenním prostředím. Pro mé testování jsem použil stejné parametry, liší se pouze velikost světa (v článku 1024x1024, má implementace 256x256) a počtem iterací (článek 500, má implementace 124). Délka buňky je během výpočtu v těchto testech ignorována, výsledná plocha tedy není dělena 10, jak bylo popsáno dříve.
+	
+	První test uvažuje homogenní prostředí (konstantní $R$), plochý terén a bezvětří. Matice popisující toto prostředí jsou popsány v \ref{eq:test-1-h-w}.
+	
+	\begin{equation}
+	\Phi_{i,j} =
+	\begin{pmatrix}
+	1       & 1 & 1 \\
+	1       & 1 & 1 \\
+	1       & 1 & 1 \\
+	\end{pmatrix}, 
+	W_{i,j} = 
+	\begin{pmatrix}
+		1       & 1 & 1 \\
+	1       & 1 & 1 \\
+	1       & 1 & 1 \\	
+	\end{pmatrix}
+	\label{eq:test-1-h-w}
+	\end{equation}
+	
+	Srovnání výsledků mého programu s výsledky publikovanými v článku je znázorněno na obrázcích \ref{fig:test-1-res-art} a \ref{fig:test-1-res-mine}. Bílá tečka označuje počátek ohně. V mé implementaci je, oproti článku, zaoblení rohů téměř nepatrné.
+	
+	\begin{figure}[H]
+		\centering
+		\begin{subfigure} {0.3 \textwidth}
+			\includegraphics[width=\linewidth]{art-homogeneous-no-wh}
+			\caption{Výsledek publikovaný v článku}
+			\label{fig:test-1-res-art}
+		\end{subfigure}
+		\hspace*{0.1 \textwidth}
+		\begin{subfigure} {0.3 \textwidth}
+			\includegraphics[width=\linewidth]{homogeneous-no-wh}
+			\caption{Výsledek mé implementace}
+			\label{fig:test-1-res-mine}
+		\end{subfigure}
+	
+		\caption{Výsledky prvního testu}
+		\label{fig:test-1-res}
+	\end{figure}
+	
+	Druhý test opět předpokládá homogenní prostředí, tentokrát je však aplikován vliv větru a členitosti terénu. Matice popisující toto prostředí jsou popsány v \ref{eq:test-2-h-w}.
+	
+	\begin{equation}
+	\Phi_{i,j} =
+	\begin{pmatrix}
+	1.5       & 1 & 0.5 \\
+	1.5       & 1 & 0.5 \\
+	1.5       & 1 & 0.5 \\
+	\end{pmatrix}, 
+	W_{i,j} = 
+	\begin{pmatrix}
+	0.5       & 0.5 & 0.5 \\
+	1       & 1 & 1 \\
+	1.5       & 1.5 & 1.5 \\	
+	\end{pmatrix}
+	\label{eq:test-2-h-w}
+	\end{equation}
+	
+	Srovnání výsledků mého programu s výsledky publikovanými v článku je znázorněno na obrázcích \ref{fig:test-2-res-art} a \ref{fig:test-2-res-mine}. Bílá tečka označuje počátek ohně. Opět je zřejmé, že zaoblení v mé implementaci není tak intenzivní jako v případě článku. Zároveň je kruhová část otočená na opačnou stranu, což může plynout z obrácené aplikace matice s výškou terénu.
+	
+	
+	\begin{figure}[H]
+		\centering
+		\begin{subfigure} {0.3 \textwidth}
+			\includegraphics[width=\linewidth]{art-homogeneous-wh}
+			\caption{Výsledek publikovaný v článku}
+			\label{fig:test-2-res-art}
+		\end{subfigure}
+		\hspace*{0.1 \textwidth}
+		\begin{subfigure} {0.3 \textwidth}
+			\includegraphics[width=\linewidth]{homogeneous-wh}
+			\caption{Výsledek mé implementace}
+			\label{fig:test-2-res-mine}
+		\end{subfigure}
+		
+		\caption{Výsledky druhého testu}
+		\label{fig:test-2-res}
+	\end{figure}
+	
+	Třetí test předpokládá následující nehomogenní prostředí: I. a II: kvadrant mají $R=1$, III. kvadrant má $R=3$ a IV. kvadrant má $R=4.5$. Vítr ani členitost terénu zatím nejsou aplikovány (jsou tedy použity matice z \ref{eq:test-1-h-w}). Srovnání výsledků mého programu s výsledky publikovanými v článku je znázorněno na obrázcích \ref{fig:test-3-res-art} a \ref{fig:test-3-res-mine}. V tomto případě se výsledky víceméně shodují.
+	
+	\begin{figure}[H]
+		\centering
+		\begin{subfigure} {0.3 \textwidth}
+			\includegraphics[width=\linewidth]{art-inhomogeneous-no-wh}
+			\caption{Výsledek publikovaný v článku}
+			\label{fig:test-3-res-art}
+		\end{subfigure}
+		\hspace*{0.1 \textwidth}
+		\begin{subfigure} {0.3 \textwidth}
+			\includegraphics[width=\linewidth]{inhomogeneous-no-wh}
+			\caption{Výsledek mé implementace}
+			\label{fig:test-3-res-mine}
+		\end{subfigure}
+		
+		\caption{Výsledky třetího testu}
+		\label{fig:test-3-res}
+	\end{figure}
+
+	Poslední test předpokládá nehomogenní prostředí, stejné jako v předchozím případě, a navíc jsou aplikovány i vlivy větru a členitosti terénu (matice \ref{eq:test-2-h-w}). Srovnání výsledků mého programu s výsledky publikovanými v článku je znázorněno na obrázcích \ref{fig:test-4-res-art} a \ref{fig:test-4-res-mine}. Z obrázků je patrné, že se výsledky liší pouze v zaoblení.
+	
+	\begin{figure}[H]
+		\centering
+		\begin{subfigure} {0.3 \textwidth}
+			\includegraphics[width=\linewidth]{art-inhomogeneous-wh}
+			\caption{Výsledek publikovaný v článku}
+			\label{fig:test-4-res-art}
+		\end{subfigure}
+		\hspace*{0.1 \textwidth}
+		\begin{subfigure} {0.3 \textwidth}
+			\includegraphics[width=\linewidth]{inhomogeneous-wh}
+			\caption{Výsledek mé implementace}
+			\label{fig:test-4-res-mine}
+		\end{subfigure}
+		
+		\caption{Výsledky čtvrtého testu}
+		\label{fig:test-4-res}
+	\end{figure}
 	
 	\section{Závěr}
 	Model se mi podařilo úspěšně na-implementovat a testy mé implementace dopadly obdobně jako testy uvedené v článku.

@@ -1,10 +1,10 @@
 globals [
-  initial_trees   ;; how many trees (green patches) we started with
-  burned_trees    ;; how many have burned so farNW
-  height_matrix   ;; height matrix saved as list: NW,N,NE,W,C,E,SW,S,SE where C is always 1
-  wind_matrix     ;; wind matrix saved as list: NW,N,NE,W,C,E,SW,SE where C is always 1
-  R_max           ;; max fire spread in the whole world
-  R_max_pow       ;; R_max^2 is used in every iteration and since it's contant, it can be pre-calculated
+  initial_trees       ;; how many trees (green patches) we started with
+  burned_trees        ;; how many have burned so far
+  R_max               ;; max fire spread in the whole world
+  R_max_pow           ;; R_max^2 is used in every iteration and since it's contant, it can be pre-calculated
+  patch_length        ;; Length of the patch used to adjust fire spread if needed
+  max_ticks           ;; Special stopping condition for tests
 ]
 
 ;; burn coefficient of individual patch
@@ -19,14 +19,39 @@ patches-own [
 
   ;; rate of fire spread of given cell
   fire_spread
-
-  ;; height of the cell
-  height
 ]
+
+;; sets values in height and wind matrices display in the interface to 1
+to reset-height-wind
+  set height-NW 1
+  set height-N 1
+  set height-NE 1
+  set height-W 1
+  set height-C 1
+  set height-E 1
+  set height-SW 1
+  set height-S 1
+  set height-SE 1
+
+  set wind-NW 1
+  set wind-N 1
+  set wind-NE 1
+  set wind-W 1
+  set wind-C 1
+  set wind-E 1
+  set wind-SW 1
+  set wind-S 1
+  set wind-SE 1
+end
 
 to setup
   clear-all
-  set-default-shape turtles "square"
+
+  ;; patch length is 10 meters
+  set patch_length 10
+
+  ;; max_ticks turned off by default
+  set max_ticks -1
 
   ;; init height matrix
   ;; height matrix contains data adjust accordingly to model (h_i,j = f(H_center - H_i,j))
@@ -43,31 +68,7 @@ to setup
   ;;  exp((height-SW - height-C) / 2.0)
   ;;  exp((height-S - height-C) / 2.0)
   ;;  exp((height-SE - height-C) / 2.0)
-  ;;)
-
-  set height_matrix (list
-    height-NW
-    height-N
-    height-NE
-    height-W
-    height-C
-    height-E
-    height-SW
-    height-S
-    height-SE
-  )
-
-  set wind_matrix (list
-    wind-NW
-    wind-N
-    wind-NE
-    wind-W
-    wind-C
-    wind-E
-    wind-SW
-    wind-S
-    wind-SE
-  )
+  ;; )
 end
 
 ;; Setup the wrold without image
@@ -83,48 +84,12 @@ to setup-random
       set burn_coef 0
       set new_burn_coef 0
       set fire_spread 0
-      set height 1
-      set pcolor brown
-    ]
-
-
-  ;; make some green trees
-  ;; and set their fire_spread
-  ask patches with [(random-float 100) < density]
-    [
-      set pcolor green
-      set fire_spread global-fire-spread
   ]
-
-  ;; create random lake
-  ask patch random-pxcor random-pycor
-  [
-    set pcolor blue
-    set fire_spread 0
-    ask neighbors [
-      set pcolor blue
-      set fire_spread 0
-      ask neighbors [
-        set pcolor blue
-        set fire_spread 0
-      ]
-    ]
-  ]
-
-  ;; set tree counts
-  set initial_trees count patches with [pcolor = green]
-
-  ;; make a column of burning trees
-  start-fire
-
-  ;; set R_max
-  set-r-max
-
-  reset-ticks
 end
 
 ;; Fire spread in forest of width 1.
 ;; Fire will spread from left to right.
+
 to setup-test-horizontal
   ;; global setup
   setup
@@ -189,6 +154,88 @@ to setup-test-diagonal
   reset-ticks
 end
 
+;; Setup homogenous world for tests as described in article
+to setup-test-homogeneous
+  ;; global setup
+  setup
+
+  ;; use patch length 1, same as R
+  set patch_length 1
+
+  ask patches [
+    set pcolor green
+    set fire_spread 1
+    set burn_coef 0
+  ]
+
+  ;; set tree counts
+  set initial_trees count patches with [pcolor = green]
+
+  ;; start fire at points around center
+  ask patches with [pxcor <= 0 and pxcor >= -1 and pycor <= 1 and pycor >= 0] [
+    set burn_coef 1
+    burn-out
+    set pcolor white
+  ]
+
+  ;; set max_tick condition
+  set max_ticks 124
+
+  ;; set R_max
+  set-r-max
+
+  reset-ticks
+end
+
+;; Setup inhomogeneous world with R distributed accordingly to acrticle
+to setup-test-inhomogeneous
+  ;; global setup
+  setup
+
+  ;; set patch_length to 1 as its' length is not important for this test
+  set patch_length 4.5
+
+  ask patches [
+    set fire_spread 0
+    set burn_coef 0
+  ]
+
+  ;; R_i,j for II and I quandrant
+  ask patches with [pycor > 0] [
+    set pcolor green
+    set fire_spread 1
+  ]
+
+  ;; R_i,j for III quadrant
+  ask patches with [pxcor < 0 and pycor <= 0] [
+    set pcolor green - 1
+    set fire_spread 3
+  ]
+
+  ;; R_i,j for IV quadrant
+  ask patches with [pxcor >= 0 and  pycor <= 0] [
+    set pcolor green - 2
+    set fire_spread 4.5
+  ]
+
+  ;; set tree counts
+  set initial_trees count patches with [pcolor = green]
+
+    ;; start fire at points around center
+  ask patches with [pxcor <= 0 and pxcor >= -1 and pycor <= 1 and pycor >= 0] [
+    set burn_coef 1
+    burn-out
+    set pcolor white
+  ]
+
+  ;; set max_tick condition
+  set max_ticks 124
+
+  ;; set R_max
+  set-r-max
+
+  reset-ticks
+end
 
 ;; Load the world from image
 ;; following colors are used
@@ -202,7 +249,7 @@ to setup-image
   setup
 
   ;; load image
-  import-pcolors "img/kamenicka-1-net-crop.bmp"
+  import-pcolors "img/source.bmp"
 
   ;; common values for all patches
   ask patches
@@ -210,7 +257,6 @@ to setup-image
     set burn_coef 0
     set new_burn_coef 0
     set fire_spread 0
-    set height 1
   ]
 
   ;; find paths
@@ -294,19 +340,19 @@ to fire-spread-step
     ;;    NW N  NE         0 1 2
     ;;    W  C  E          3 4 5
     ;;    SW S  SE         6 7 8
-    if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj_burn (adj_burn + (item 7 wind_matrix) * (item 7 height_matrix) * burn_coef * fire_spread)]]                      ;; N -> height_matrix[N]
-    if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj_burn (adj_burn + (item 6 wind_matrix) * (item 6 height_matrix) * burn_coef * fire_spread)]]                   ;; W -> height_matrix[W]
-    if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj_burn (adj_burn + (item 3 wind_matrix) * (item 3 height_matrix) * burn_coef * fire_spread)]]                     ;; E -> height_matrix[E]
-    if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj_burn (adj_burn + (item 1 wind_matrix) * (item 1 height_matrix) * burn_coef * fire_spread)]]                    ;; S -> height_matrix[S]
+    if patch-at 0 1 != nobody [ask patch-at 0 1 [set adj_burn (adj_burn + wind-N * height-N * burn_coef * fire_spread)]]                      ;; N
+    if patch-at -1 0  != nobody [ask patch-at -1 0 [set adj_burn (adj_burn + wind-W * height-W * burn_coef * fire_spread)]]                   ;; W
+    if patch-at 1 0 != nobody [ ask patch-at 1 0 [set adj_burn (adj_burn + wind-E * height-E * burn_coef * fire_spread)]]                     ;; W
+    if patch-at 0 -1 != nobody [ask patch-at 0 -1 [set adj_burn (adj_burn + wind-S * height-S * burn_coef * fire_spread)]]                    ;; S
 
     ;; burn area of diagonal cells
-    if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag_burn diag_burn + (item 8 wind_matrix) * (item 8 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[NW]
-    if patch-at 1 1 != nobody [ask patch-at 1 1 [set diag_burn diag_burn + (item 6 wind_matrix) * (item 6 height_matrix) * burn_coef * fire_spread * fire_spread]]      ;; height_matrix[NE]
-    if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag_burn diag_burn + (item 2 wind_matrix) * (item 2 height_matrix) * burn_coef * fire_spread * fire_spread]]  ;; height_matrix[SW]
-    if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + (item 0 wind_matrix) * (item 0 height_matrix) * burn_coef * fire_spread * fire_spread]]    ;; height_matrix[SE]
+    if patch-at -1 1 != nobody [ask patch-at -1 1 [set diag_burn diag_burn + wind-NW * height-NW * burn_coef * fire_spread * fire_spread]]    ;; NW
+    if patch-at 1 1 != nobody [ask patch-at 1 1 [set diag_burn diag_burn + wind-NE * height-NE * burn_coef * fire_spread * fire_spread]]      ;; NE
+    if patch-at -1 -1 != nobody [ask patch-at -1 -1 [set diag_burn diag_burn + wind-SW * height-SW * burn_coef * fire_spread * fire_spread]]  ;; SW
+    if patch-at 1 -1 != nobody [ask patch-at 1 -1 [set diag_burn diag_burn + wind-SE * height-SE * burn_coef * fire_spread * fire_spread]]    ;; SE
 
     ;; total burned area
-    let burned_area (((adj_burn / R_max) + (0.785 * diag_burn / R_max_pow)) * (R_max / 10))
+    let burned_area (((adj_burn / R_max) + (0.785 * diag_burn / R_max_pow)) * (R_max / patch_length))
 
     ;; burn_coef * R_ij/R + total burned area
     set new_burn_coef ((burn_coef * fire_spread / R_max) + burned_area)
@@ -316,19 +362,7 @@ to fire-spread-step
     ]
 
     ;; assign color to patch
-    ;color-burning-patch
-    ;; new tree has caught fire
-    ;if (new_burn_coef > 0 and burn_coef = 0) [
-    ;  ignite-new
-    ;]
-
-    ;; set color accordingly to burn_coef
-    ;if (new_burn_coef > 0.1 and new_burn_coef < 0.6) [
-    ;  set pcolor red + 3
-    ;]
-    ;if (new_burn_coef >= 0.6 and new_burn_coef < 1) [
-    ;  set pcolor red
-    ;]
+    color-burning-patch
 
     ;; burned out tree
     if (new_burn_coef >= 1) [
@@ -359,42 +393,35 @@ to go
   fire-spread-step
 
   ;; if no new trees were burned and no patches are burning (burn_coeficient > 0 but < 1), stop
+  ;; also stop if max_ticks is set to > 0 and is equal to current tick count
   let burning_patches_count count patches with [burn_coef > 0 and burn_coef < 1]
-  ifelse (curr_burn_trees = burned_trees and  burning_patches_count = 0) [
-    ;tick
-    show burning_patches_count
+  ifelse ((curr_burn_trees = burned_trees and  burning_patches_count = 0) or
+    (max_ticks > 0 and max_ticks = ticks)) [
     stop
   ] [
     tick
-    ;stop
   ]
-end
-
-;; ignites given patch
-;; sets its color to red
-to ignite-new
-  set pcolor red + 4
-  ;;set pcolor red + 3
-  ;;set burned_trees burned_trees + 1
 end
 
 ;; Assigns color to the patch based on its' new_burn_coef
 to color-burning-patch
-  ;; new tree has caught fire
-  if (new_burn_coef > 0 and burn_coef = 0) [
-    set pcolor yellow
-  ]
+  if (fire-multicolor) [
+    ;; new tree has caught fire
+    if (new_burn_coef > 0 and burn_coef = 0) [
+      set pcolor yellow
+    ]
 
-  ;; set color accordingly to burn_coef
-  if (new_burn_coef > 0.1 and new_burn_coef <= 0.6) [
-    set pcolor orange
-  ]
-  if (new_burn_coef > 0.6 and new_burn_coef < 1) [
-    set pcolor red
+    ;; set color accordingly to burn_coef
+    if (new_burn_coef > 0.1 and new_burn_coef <= 0.6) [
+      set pcolor orange
+    ]
+    if (new_burn_coef > 0.6 and new_burn_coef < 1) [
+      set pcolor red
+    ]
   ]
 end
 
-;; burns the cell out
+;; Burns the cell out and increments # of burned trees
 ;; sets its' color to black
 ;; and burn coef to 1
 to burn-out
@@ -454,15 +481,15 @@ percent burned
 11
 
 SLIDER
-5
-23
-190
-56
+7
+12
+192
+45
 density
 density
 0.0
 99.0
-80.0
+77.0
 1.0
 1
 %
@@ -473,7 +500,7 @@ BUTTON
 108
 1057
 144
-go
+Go
 go
 T
 1
@@ -525,25 +552,25 @@ burned_trees
 11
 
 SLIDER
-6
-69
-194
-102
+8
+58
+196
+91
 global-fire-spread
 global-fire-spread
 0
 10
-10.0
+6.1
 0.1
 1
 m/min
 HORIZONTAL
 
 INPUTBOX
-10
-142
-69
-202
+11
+176
+70
+236
 height-NW
 1.0
 1
@@ -551,10 +578,10 @@ height-NW
 Number
 
 INPUTBOX
-78
-142
-132
-202
+79
+176
+133
+236
 height-N
 1.0
 1
@@ -562,10 +589,10 @@ height-N
 Number
 
 INPUTBOX
-147
-143
-206
-203
+146
+177
+205
+237
 height-NE
 1.0
 1
@@ -573,10 +600,10 @@ height-NE
 Number
 
 INPUTBOX
-11
-215
-67
-275
+15
+239
+71
+299
 height-W
 1.0
 1
@@ -584,10 +611,10 @@ height-W
 Number
 
 INPUTBOX
-149
-216
-204
-276
+146
+240
+201
+300
 height-E
 1.0
 1
@@ -595,10 +622,10 @@ height-E
 Number
 
 INPUTBOX
-7
-284
-71
-344
+11
+308
+75
+368
 height-SW
 1.0
 1
@@ -606,10 +633,10 @@ height-SW
 Number
 
 INPUTBOX
-83
-287
-140
-347
+80
+306
+137
+366
 height-S
 1.0
 1
@@ -617,10 +644,10 @@ height-S
 Number
 
 INPUTBOX
-147
-290
-208
-350
+143
+305
+204
+365
 height-SE
 1.0
 1
@@ -629,9 +656,9 @@ Number
 
 INPUTBOX
 80
-218
+242
 133
-278
+302
 height-C
 1.0
 1
@@ -639,21 +666,21 @@ height-C
 Number
 
 INPUTBOX
-452
-544
-519
-604
+10
+602
+77
+662
 fire_start_x
-0.0
+-60.0
 1
 0
 Number
 
 INPUTBOX
-533
-544
-599
-604
+91
+602
+157
+662
 fire_start_y
 0.0
 1
@@ -678,10 +705,10 @@ NIL
 1
 
 INPUTBOX
-7
-376
-62
-436
+15
+388
+70
+448
 wind-NW
 1.0
 1
@@ -689,10 +716,10 @@ wind-NW
 Number
 
 INPUTBOX
-75
-376
-125
-436
+76
+387
+126
+447
 wind-N
 1.0
 1
@@ -700,10 +727,10 @@ wind-N
 Number
 
 INPUTBOX
-140
-376
-194
-436
+132
+387
+186
+447
 wind-NE
 1.0
 1
@@ -711,10 +738,10 @@ wind-NE
 Number
 
 INPUTBOX
-9
-443
-59
-503
+17
+455
+67
+515
 wind-W
 1.0
 1
@@ -722,10 +749,10 @@ wind-W
 Number
 
 INPUTBOX
-76
-443
-126
-503
+77
+454
+127
+514
 wind-C
 1.0
 1
@@ -733,10 +760,10 @@ wind-C
 Number
 
 INPUTBOX
-142
-445
-192
-505
+134
+456
+184
+516
 wind-E
 1.0
 1
@@ -744,10 +771,10 @@ wind-E
 Number
 
 INPUTBOX
-10
-514
-68
-574
+18
+526
+76
+586
 wind-SW
 1.0
 1
@@ -755,10 +782,10 @@ wind-SW
 Number
 
 INPUTBOX
-79
-515
-129
-575
+80
+526
+130
+586
 wind-S
 1.0
 1
@@ -766,10 +793,10 @@ wind-S
 Number
 
 INPUTBOX
-144
-514
-194
-574
+136
+525
+186
+585
 wind-SE
 1.0
 1
@@ -817,6 +844,85 @@ BUTTON
 144
 One step
 do-one-step
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SWITCH
+990
+160
+1121
+193
+fire-multicolor
+fire-multicolor
+0
+1
+-1000
+
+BUTTON
+796
+334
+994
+367
+Setup for inhomogeneous test
+setup-test-inhomogeneous
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+650
+547
+762
+580
+Save to image
+export-view \"view.png\"
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+35
+114
+190
+147
+Reset height and wind
+reset-height-wind
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+795
+289
+977
+322
+Setup for homogenous test
+setup-test-homogeneous
 NIL
 1
 T
